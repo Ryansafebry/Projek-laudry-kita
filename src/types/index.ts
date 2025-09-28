@@ -18,6 +18,7 @@ export interface User {
   phone?: string;
   bio?: string;
   profilePic?: string;
+  createdAt: string;
 }
 
 export interface Notification {
