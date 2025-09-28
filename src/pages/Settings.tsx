@@ -306,6 +306,26 @@ const Settings = () => {
               <CardDescription>Pengaturan keamanan dan privasi.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Informasi Akun</h3>
+                <div className="p-4 border rounded-lg space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">User ID:</span>
+                    <span className="font-mono text-xs">{user.id}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Bergabung:</span>
+                    <span>
+                      {new Date(user.id).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <Separator />
               <div className="flex items-center justify-between p-4 rounded-lg border">
                 <div>
                   <Label htmlFor="2fa">Autentikasi Dua Faktor</Label>
