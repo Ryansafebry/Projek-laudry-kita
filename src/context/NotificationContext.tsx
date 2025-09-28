@@ -41,7 +41,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         timestamp: new Date(notif.timestamp)
       }));
     }
-    return defaultNotifications;
+    return [];
   });
 
   // Save notifications to localStorage whenever they change
