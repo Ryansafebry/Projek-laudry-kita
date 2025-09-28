@@ -16,7 +16,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   updateUser: (user: User) => void;
-  register: (userData: Omit<User, "id" | "createdAt"> & { password?: string }) => Promise<boolean>;
+  register: (userData: Omit<User, "id"> & { password?: string }) => Promise<boolean>;
 }
 
 // Buat konteks dengan nilai default
@@ -43,21 +43,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     const storedUsers = localStorage.getItem("users");
-    let users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
+    const users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
     
-    const userIndex = users.findIndex(u => u.username === username && u.password === password);
+    const foundUser = users.find(u => u.username === username && u.password === password);
 
-    if (userIndex > -1) {
-      let foundUser = users[userIndex];
-      
-      // Migration for old users without createdAt
-      if (!foundUser.createdAt) {
-        const isDate = !isNaN(new Date(foundUser.id).getTime());
-        foundUser.createdAt = isDate ? new Date(foundUser.id).toISOString() : new Date().toISOString();
-        users[userIndex] = foundUser;
-        localStorage.setItem("users", JSON.stringify(users));
-      }
-
+    if (foundUser) {
       const { password: _, ...userToStore } = foundUser;
       setIsAuthenticated(true);
       setUser(userToStore);
@@ -85,7 +75,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const register = async (userData: Omit<User, "id" | "createdAt"> & { password?: string }): Promise<boolean> => {
+  const register = async (userData: Omit<User, "id"> & { password?: string }): Promise<boolean> => {
     const storedUsers = localStorage.getItem("users");
     const users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
 
@@ -94,8 +84,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const newUser: UserWithPassword = {
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
+      id: new Date().toISOString(),
       ...userData,
     };
     

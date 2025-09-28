@@ -316,7 +316,7 @@ const Settings = () => {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Bergabung:</span>
                     <span>
-                      {new Date(user.createdAt).toLocaleDateString('id-ID', {
+                      {new Date(user.id).toLocaleDateString('id-ID', {
                         day: 'numeric',
                         month: 'long',
                         year: 'numeric',
