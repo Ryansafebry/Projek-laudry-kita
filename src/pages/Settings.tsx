@@ -28,14 +28,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Camera, Save } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Camera, Save, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeContext } from "@/context/ThemeContext";
+import { useOrders } from "@/context/OrderContext";
 import { showSuccess } from "@/utils/toast";
 
 const Settings = () => {
   const { user, updateUser } = useAuth();
   const { theme, setTheme } = useThemeContext();
+  const { resetOrders } = useOrders();
 
   // Profile State
   const [fullName, setFullName] = useState("");
@@ -90,6 +103,11 @@ const Settings = () => {
     }
   };
 
+  const handleResetTransactions = () => {
+    resetOrders();
+    showSuccess("Semua data transaksi berhasil direset.");
+  };
+
   if (!user) {
     return <div>Memuat data pengguna...</div>;
   }
@@ -98,12 +116,13 @@ const Settings = () => {
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-6">Pengaturan</h1>
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6">
           <TabsTrigger value="profile">Profil</TabsTrigger>
           <TabsTrigger value="password">Kata Sandi</TabsTrigger>
           <TabsTrigger value="notifications">Notifikasi</TabsTrigger>
           <TabsTrigger value="display">Tampilan</TabsTrigger>
           <TabsTrigger value="security">Keamanan</TabsTrigger>
+          <TabsTrigger value="data">Data</TabsTrigger>
         </TabsList>
         
         {/* Profile Tab */}
@@ -344,6 +363,50 @@ const Settings = () => {
                 Simpan Pengaturan
               </Button>
             </CardFooter>
+          </Card>
+        </TabsContent>
+
+        {/* Data Tab */}
+        <TabsContent value="data">
+          <Card>
+            <CardHeader>
+              <CardTitle>Manajemen Data</CardTitle>
+              <CardDescription>
+                Kelola data aplikasi Anda. Tindakan di sini tidak dapat diurungkan.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/50 bg-destructive/5">
+                <div>
+                  <Label className="text-destructive">Reset Data Transaksi</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Tindakan ini akan menghapus semua daftar pesanan dan laporan transaksi secara permanen.
+                  </p>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Reset Data
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Apakah Anda benar-benar yakin?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tindakan ini tidak dapat diurungkan. Ini akan menghapus semua data pesanan dan laporan secara permanen dari aplikasi dan penyimpanan lokal Anda.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Batal</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleResetTransactions} className="bg-destructive hover:bg-destructive/90">
+                        Ya, Hapus Semua Data
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>

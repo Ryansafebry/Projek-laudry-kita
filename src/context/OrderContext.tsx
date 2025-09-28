@@ -42,6 +42,7 @@ interface OrderContextType {
   addOrder: (newOrderData: Omit<Order, 'id' | 'orderDate' | 'status' | 'amountPaid' | 'paymentHistory'>) => void;
   updateOrderStatus: (orderId: string, newStatus: string) => void;
   addPayment: (orderId: string, amount: number, method: string) => void;
+  resetOrders: () => void;
 }
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
@@ -103,8 +104,13 @@ export const OrderProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
+  const resetOrders = () => {
+    setOrders([]);
+    saveToStorage(STORAGE_KEYS.ORDERS, []);
+  };
+
   return (
-    <OrderContext.Provider value={{ orders, addOrder, updateOrderStatus, addPayment }}>
+    <OrderContext.Provider value={{ orders, addOrder, updateOrderStatus, addPayment, resetOrders }}>
       {children}
     </OrderContext.Provider>
   );
