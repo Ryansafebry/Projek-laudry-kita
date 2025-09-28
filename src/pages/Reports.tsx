@@ -51,7 +51,6 @@ const Reports = () => {
         // YYYY-MM-DD format
         orderDate = new Date(order.orderDate);
       }
-    } 
     
     const fromDate = new Date(date.from);
     const toDate = date.to ? new Date(date.to.setHours(23, 59, 59, 999)) : new Date();
