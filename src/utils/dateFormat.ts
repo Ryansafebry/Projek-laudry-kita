@@ -9,6 +9,11 @@
  */
 export const formatDateDDMMYYYY = (dateInput: string | Date | number): string => {
   try {
+    // If the input is already a string in DD/MM/YYYY format, return it directly.
+    if (typeof dateInput === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(dateInput)) {
+      return dateInput;
+    }
+
     const date = new Date(dateInput);
     
     // Check if date is valid
