@@ -52,7 +52,7 @@ const Reports = () => {
         orderDate = new Date(order.orderDate);
       }
     } catch (error) {
-      console.warn('date format:', order.orderDate);
+      console.warn('date:', order.orderDate);
       return false;
     }
     
