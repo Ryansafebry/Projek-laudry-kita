@@ -41,16 +41,21 @@ const Reports = () => {
   const filteredOrders = orders.filter(order => {
     if (!date?.from) return true;
     
-    // Parse order date (handle both DD/MM/YYYY and YYYY-MM-DD formats)
     let orderDate: Date;
     try {
       if (order.orderDate.includes('/')) {
-        // DD/MM/YYYY format
         orderDate = parseDDMMYYYY(order.orderDate);
       } else {
-        // YYYY-MM-DD format
         orderDate = new Date(order.orderDate);
       }
+      if (isNaN(orderDate.getTime())) {
+        console.error("Invalid date found for order:", order.id);
+        return false;
+      }
+    } catch (error) {
+      console.error("Error parsing date for order:", order.id, error);
+      return false;
+    }
     
     const fromDate = new Date(date.from);
     const toDate = date.to ? new Date(date.to.setHours(23, 59, 59, 999)) : new Date();
