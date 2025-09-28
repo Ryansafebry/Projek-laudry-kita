@@ -33,6 +33,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   });
 
   useEffect(() => {
+    const storedUsers = localStorage.getItem("users");
+    if (!storedUsers || JSON.parse(storedUsers).length === 0) {
+      const dummyUser: UserWithPassword = {
+        id: new Date().toISOString(),
+        fullName: "Admin Laundry",
+        username: "admin",
+        email: "admin@laundrykita.com",
+        password: "password",
+        phone: "081234567890",
+      };
+      localStorage.setItem("users", JSON.stringify([dummyUser]));
+    }
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem("isAuthenticated", isAuthenticated.toString());
     if (user) {
       localStorage.setItem("user", JSON.stringify(user));
