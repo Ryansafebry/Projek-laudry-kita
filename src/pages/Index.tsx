@@ -20,6 +20,8 @@ import {
   PlusCircle,
   FileText,
   ArrowRight,
+  Users,
+  Landmark,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useOrders } from "@/context/OrderContext";
@@ -30,13 +32,17 @@ const Index = () => {
   const { orders } = useOrders();
   const recentOrders = orders.slice(0, 5);
 
+  // Statistik Harian
   const today = getCurrentDateDDMMYYYY();
   const ordersToday = orders.filter(order => {
-    // Convert order date to DD/MM/YYYY format for comparison
     const orderDateFormatted = convertYYYYMMDDtoDDMMYYYY(order.orderDate);
     return orderDateFormatted === today;
   });
   const incomeToday = ordersToday.reduce((sum, order) => sum + order.amountPaid, 0);
+
+  // Statistik Keseluruhan
+  const totalOrders = orders.length;
+  const totalIncome = orders.reduce((sum, order) => sum + order.amountPaid, 0);
 
   return (
     <div className="space-y-6">
@@ -52,7 +58,7 @@ const Index = () => {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -75,6 +81,30 @@ const Index = () => {
           <CardContent>
             <div className="text-2xl font-bold">Rp {incomeToday.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">Total pembayaran diterima hari ini</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Semua Order
+            </CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalOrders}</div>
+            <p className="text-xs text-muted-foreground">Jumlah pesanan sejak awal</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Semua Pemasukan
+            </CardTitle>
+            <Landmark className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">Rp {totalIncome.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Jumlah pemasukan sejak awal</p>
           </CardContent>
         </Card>
       </div>
