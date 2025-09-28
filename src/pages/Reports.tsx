@@ -40,26 +40,28 @@ const Reports = () => {
 
   const filteredOrders = orders.filter(order => {
     if (!date?.from) return true;
-    
+
     let orderDate: Date;
     try {
-      if (order.orderDate.includes('/')) {
-        orderDate = parseDDMMYYYY(order.orderDate);
-      } else {
-        orderDate = new Date(order.orderDate);
-      }
+      // Menggunakan parser DD/MM/YYYY yang sudah dibuat
+      orderDate = parseDDMMYYYY(order.orderDate);
       if (isNaN(orderDate.getTime())) {
-        console.error("Invalid date found for order:", order.id);
+        console.warn(`Format tanggal tidak valid untuk order ${order.id}: ${order.orderDate}`);
         return false;
       }
-    } catch (error) {
-      console.error("Error parsing date for order:", order.id, error);
+    } catch (e) {
+      console.error(`Error saat mem-parsing tanggal untuk order ${order.id}: ${order.orderDate}`, e);
       return false;
     }
-    
+
+    // Mengatur tanggal 'dari' ke awal hari
     const fromDate = new Date(date.from);
-    const toDate = date.to ? new Date(date.to.setHours(23, 59, 59, 999)) : new Date();
-    
+    fromDate.setHours(0, 0, 0, 0);
+
+    // Mengatur tanggal 'sampai' ke akhir hari
+    const toDate = date.to ? new Date(date.to) : new Date(date.from);
+    toDate.setHours(23, 59, 59, 999);
+
     return orderDate >= fromDate && orderDate <= toDate;
   });
 
