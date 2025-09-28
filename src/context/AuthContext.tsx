@@ -1,141 +1,112 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { User } from "../types";
+import {
+  createContext,
+  useState,
+  useContext,
+  ReactNode,
+  useEffect,
+} from "react";
 
-interface User {
-  id: string;
-  username: string;
-  email: string;
-  fullName: string;
-  phone?: string;
-}
+type UserWithPassword = User & { password?: string };
 
+// Definisikan tipe untuk konteks
 interface AuthContextType {
-  user: User | null;
   isAuthenticated: boolean;
+  user: User | null;
   login: (username: string, password: string) => Promise<boolean>;
-  register: (userData: RegisterData) => Promise<boolean>;
   logout: () => void;
-  users: User[];
+  updateUser: (user: User) => void;
+  register: (userData: Omit<User, "id"> & { password?: string }) => Promise<boolean>;
 }
 
-interface RegisterData {
-  fullName: string;
-  email: string;
-  username: string;
-  password: string;
-  phone?: string;
-}
-
+// Buat konteks dengan nilai default
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Buat provider komponen
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem("isAuthenticated") === "true";
+  });
+  const [user, setUser] = useState<User | null>(() => {
+    const storedUser = localStorage.getItem("user");
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
 
-  // Load users and current user from localStorage on mount
   useEffect(() => {
-    const savedUsers = localStorage.getItem('laundry_users');
-    const savedUser = localStorage.getItem('laundry_current_user');
-    
-    if (savedUsers) {
-      setUsers(JSON.parse(savedUsers));
+    localStorage.setItem("isAuthenticated", isAuthenticated.toString());
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user));
     } else {
-      // Default admin user
-      const defaultUsers = [
-        {
-          id: '1',
-          username: 'admin',
-          email: 'admin@laundrykita.com',
-          fullName: 'Administrator',
-          phone: '+62 812-3456-7890'
-        }
-      ];
-      setUsers(defaultUsers);
-      localStorage.setItem('laundry_users', JSON.stringify(defaultUsers));
+      localStorage.removeItem("user");
     }
-    
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-  }, []);
+  }, [isAuthenticated, user]);
 
   const login = async (username: string, password: string): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const storedUsers = localStorage.getItem("users");
+    const users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
     
-    // Check if user exists (for demo, we'll accept any registered username)
-    const foundUser = users.find(u => u.username === username);
-    
+    const foundUser = users.find(u => u.username === username && u.password === password);
+
     if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('laundry_current_user', JSON.stringify(foundUser));
+      const { password: _, ...userToStore } = foundUser;
+      setIsAuthenticated(true);
+      setUser(userToStore);
       return true;
     }
-    
-    // For demo purposes, also accept default admin credentials
-    if (username === 'admin' && password === 'admin123') {
-      const adminUser = users.find(u => u.username === 'admin') || users[0];
-      setUser(adminUser);
-      localStorage.setItem('laundry_current_user', JSON.stringify(adminUser));
-      return true;
-    }
-    
     return false;
   };
 
-  const register = async (userData: RegisterData): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Check if username or email already exists
-    const existingUser = users.find(u => 
-      u.username === userData.username || u.email === userData.email
-    );
-    
-    if (existingUser) {
-      return false;
+  const logout = () => {
+    setIsAuthenticated(false);
+    setUser(null);
+    localStorage.removeItem("user");
+    localStorage.setItem("isAuthenticated", "false");
+  };
+
+  const updateUser = (updatedUserData: User) => {
+    setUser(updatedUserData);
+    const storedUsers = localStorage.getItem("users");
+    let users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
+    const userIndex = users.findIndex(u => u.id === updatedUserData.id);
+    if (userIndex > -1) {
+      const oldPassword = users[userIndex].password;
+      users[userIndex] = { ...updatedUserData, password: oldPassword };
+      localStorage.setItem("users", JSON.stringify(users));
     }
-    
-    // Create new user
-    const newUser: User = {
-      id: String(Date.now()),
-      username: userData.username,
-      email: userData.email,
-      fullName: userData.fullName,
-      phone: userData.phone
+  };
+
+  const register = async (userData: Omit<User, "id"> & { password?: string }): Promise<boolean> => {
+    const storedUsers = localStorage.getItem("users");
+    const users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
+
+    if (users.some(u => u.username === userData.username || u.email === userData.email)) {
+      return false; // User already exists
+    }
+
+    const newUser: UserWithPassword = {
+      id: new Date().toISOString(),
+      ...userData,
     };
     
-    const updatedUsers = [...users, newUser];
-    setUsers(updatedUsers);
-    localStorage.setItem('laundry_users', JSON.stringify(updatedUsers));
-    
+    users.push(newUser);
+    localStorage.setItem("users", JSON.stringify(users));
     return true;
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('laundry_current_user');
-  };
-
-  const isAuthenticated = !!user;
-
   return (
-    <AuthContext.Provider value={{
-      user,
-      isAuthenticated,
-      login,
-      register,
-      logout,
-      users
-    }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated, user, login, logout, updateUser, register }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
+// Buat custom hook untuk menggunakan konteks
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
