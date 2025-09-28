@@ -1,19 +1,7 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import {
-  CircleUser,
-  Menu,
-  Shirt,
-  LayoutDashboard,
-  ShoppingCart,
-  FileText,
-  PlusCircle,
-  LogOut,
-  Settings,
-  HelpCircle,
-} from "lucide-react";
-import NotificationPanel from "@/components/NotificationPanel";
-import ThemeToggle from "@/components/ThemeToggle";
+import { Link } from "react-router-dom";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Menu, CircleUserRound } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,107 +10,90 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { MainNav } from "./MainNav";
+import { PromoSlider } from "./PromoSlider";
 
 const Header = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { logout, user } = useAuth();
-  const pathname = location.pathname;
-
-  const navLinks = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/add-order", label: "Tambah Order", icon: PlusCircle },
-    { href: "/orders", label: "Daftar Pesanan", icon: ShoppingCart },
-    { href: "/reports", label: "Laporan", icon: FileText },
-  ];
-
-  const handleLogout = () => {
-    logout();
-    navigate("/");
-  };
-
-  const handleSettings = () => {
-    navigate("/settings");
-  };
-
-  const handleSupport = () => {
-    navigate("/support");
-  };
+  const { user, logout } = useAuth();
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button variant="outline" size="icon" className="shrink-0 md:hidden">
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle navigation menu</span>
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="flex flex-col">
-          <nav className="grid gap-2 text-lg font-medium">
-            <Link
-              to="/dashboard"
-              className="flex items-center gap-2 text-lg font-semibold"
-              aria-label="Laundry Kita"
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-16 items-center">
+        <MainNav />
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="shrink-0 md:hidden"
             >
-              <Shirt className="h-6 w-6" />
-            </Link>
-            {navLinks.map((link) => (
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Toggle navigation menu</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left">
+            <nav className="grid gap-6 text-lg font-medium">
               <Link
-                key={link.href}
-                to={link.href}
-                className={cn(
-                  "mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground",
-                  pathname.startsWith(link.href) && link.href !== "/dashboard" ? "bg-muted text-foreground" : pathname === "/dashboard" && link.href === "/dashboard" ? "bg-muted text-foreground" : "",
-                )}
+                to="/"
+                className="flex items-center gap-2 text-lg font-semibold"
               >
-                <link.icon className="h-5 w-5" />
-                {link.label}
+                <img src="/logo.png" alt="Logo" className="h-8 w-auto" />
+                <span className="sr-only">Laundry Kita</span>
               </Link>
-            ))}
-          </nav>
-        </SheetContent>
-      </Sheet>
-      <div className="w-full flex-1 overflow-hidden bg-gradient-to-r from-teal-50/50 to-cyan-50/50 rounded-lg mx-2 border border-teal-100/50 promo-banner">
-        <div className="relative h-8 flex items-center">
-          <div className="absolute whitespace-nowrap animate-marquee text-sm font-medium text-teal-700 hover:animate-pulse cursor-pointer promo-text">
-            🎉 Promo Spesial! Cuci 5kg Gratis Setrika • 💧 Deterjen Premium Tersedia • 🚚 Antar Jemput Gratis Area Kota • ⏰ Buka 24 Jam Setiap Hari • 🎁 Member Baru Diskon 20% • ✨ Garansi Bersih 100%
-          </div>
+              <Link to="/dashboard" className="hover:text-foreground">
+                Dashboard
+              </Link>
+              <Link
+                to="/orders"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Pesanan
+              </Link>
+              <Link
+                to="/customers"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Pelanggan
+              </Link>
+              <Link
+                to="/reports"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Laporan
+              </Link>
+              <Link
+                to="/settings"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Pengaturan
+              </Link>
+            </nav>
+          </SheetContent>
+        </Sheet>
+
+        <div className="flex w-full items-center justify-end gap-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary" size="icon" className="rounded-full">
+                <CircleUserRound className="h-5 w-5" />
+                <span className="sr-only">Toggle user menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>{user?.email || "My Account"}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>Settings</DropdownMenuItem>
+              <DropdownMenuItem>Support</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-      
-      <NotificationPanel />
-      
-      <ThemeToggle />
-      
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="secondary" size="icon" className="rounded-full">
-            <CircleUser className="h-5 w-5" />
-            <span className="sr-only">Toggle user menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>{user?.fullName || 'Akun Saya'}</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleSettings} className="cursor-pointer">
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Pengaturan</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleSupport} className="cursor-pointer">
-            <HelpCircle className="mr-2 h-4 w-4" />
-            <span>Bantuan</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Keluar</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <div className="container pb-4">
+        <PromoSlider />
+      </div>
     </header>
   );
 };
