@@ -344,7 +344,7 @@ const Support = () => {
                 <MessageCircle className="h-5 w-5 text-green-600" />
                 <div>
                   <p className="font-medium">WhatsApp</p>
-                  <p className="text-sm text-muted-foreground">+62 812-3456-7890</p>
+                  <p className="text-sm text-muted-foreground">+62 816-5322-05</p>
                 </div>
               </div>
               
