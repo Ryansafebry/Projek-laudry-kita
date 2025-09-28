@@ -31,34 +31,6 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
   
-  // Default notifications for first-time users
-  const defaultNotifications: Notification[] = [
-    {
-      id: '1',
-      title: 'Pesanan Baru',
-      message: 'Pesanan ORD-001 dari Budi Santoso telah diterima',
-      type: 'info',
-      timestamp: new Date(Date.now() - 300000),
-      read: false,
-    },
-    {
-      id: '2',
-      title: 'Pembayaran Diterima',
-      message: 'Pembayaran untuk pesanan ORD-002 telah dikonfirmasi',
-      type: 'success',
-      timestamp: new Date(Date.now() - 600000),
-      read: false,
-    },
-    {
-      id: '3',
-      title: 'Pesanan Siap Diambil',
-      message: 'Pesanan ORD-003 sudah selesai dan siap untuk diambil',
-      type: 'success',
-      timestamp: new Date(Date.now() - 900000),
-      read: true,
-    }
-  ];
-
   // Load notifications from localStorage or use default
   const [notifications, setNotifications] = useState<Notification[]>(() => {
     const savedNotifications = loadFromStorage<Notification[]>(STORAGE_KEYS.NOTIFICATIONS, []);
