@@ -1,6 +1,4 @@
-// Simulasi service untuk pengiriman email verifikasi
-// Dalam implementasi nyata, ini akan menggunakan service email seperti SendGrid, Nodemailer, dll.
-
+// Frontend Email Service - API Client untuk Backend
 export interface VerificationEmail {
   email: string;
   code: string;
@@ -8,117 +6,98 @@ export interface VerificationEmail {
   isUsed: boolean;
 }
 
-class EmailService {
-  private verificationCodes: Map<string, VerificationEmail> = new Map();
+interface ApiResponse<T = any> {
+  success: boolean;
+  message: string;
+  data?: T;
+  error?: string;
+}
 
-  // Generate kode verifikasi 6 digit
-  private generateVerificationCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+class EmailService {
+  private apiBaseUrl: string;
+
+  constructor() {
+    // URL backend API
+    this.apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
   }
 
-  // Simulasi pengiriman email verifikasi
+  // Kirim email verifikasi via backend API
   async sendVerificationEmail(email: string): Promise<{ success: boolean; code?: string }> {
+    console.log('📧 EmailService: Mengirim request ke backend API untuk:', email);
+    
     try {
-      const code = this.generateVerificationCode();
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 15); // Berlaku 15 menit
+      const response = await fetch(`${this.apiBaseUrl}/send-verification-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
 
-      const verificationData: VerificationEmail = {
-        email,
-        code,
-        expiresAt,
-        isUsed: false
-      };
+      const result: ApiResponse = await response.json();
+      
+      console.log('📬 EmailService: Response dari backend:', result);
 
-      // Simpan kode verifikasi (dalam implementasi nyata, ini akan disimpan di database)
-      this.verificationCodes.set(email, verificationData);
-
-      // Simulasi pengiriman email
-      console.log(`📧 Email verifikasi dikirim ke: ${email}`);
-      console.log(`🔑 Kode verifikasi: ${code}`);
-      console.log(`⏰ Berlaku hingga: ${expiresAt.toLocaleString()}`);
-
-      // Simulasi delay pengiriman email
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      return { success: true, code }; // Dalam implementasi nyata, jangan return code
+      if (result.success) {
+        console.log('✅ EmailService: Email berhasil dikirim via backend');
+        return { 
+          success: true, 
+          code: result.data?.code // Hanya untuk development mode
+        };
+      } else {
+        console.error('❌ EmailService: Backend error:', result.message);
+        return { success: false };
+      }
     } catch (error) {
-      console.error('Error sending verification email:', error);
+      console.error('💥 EmailService: Network error:', error);
       return { success: false };
     }
   }
 
-  // Verifikasi kode yang dimasukkan user
-  verifyCode(email: string, inputCode: string): boolean {
-    const verificationData = this.verificationCodes.get(email);
+  // Verifikasi kode via backend API
+  async verifyCode(email: string, inputCode: string): Promise<boolean> {
+    console.log('🔍 EmailService: Mengirim request verifikasi ke backend untuk:', email);
     
-    if (!verificationData) {
-      console.log('❌ Kode verifikasi tidak ditemukan untuk email:', email);
-      return false;
-    }
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/verify-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, code: inputCode }),
+      });
 
-    if (verificationData.isUsed) {
-      console.log('❌ Kode verifikasi sudah digunakan');
-      return false;
-    }
+      const result: ApiResponse = await response.json();
+      
+      console.log('📋 EmailService: Response verifikasi dari backend:', result);
 
-    if (new Date() > verificationData.expiresAt) {
-      console.log('❌ Kode verifikasi sudah kedaluwarsa');
-      return false;
-    }
-
-    if (verificationData.code !== inputCode) {
-      console.log('❌ Kode verifikasi tidak cocok');
-      return false;
-    }
-
-    // Tandai kode sebagai sudah digunakan
-    verificationData.isUsed = true;
-    this.verificationCodes.set(email, verificationData);
-
-    console.log('✅ Kode verifikasi berhasil diverifikasi');
-    return true;
-  }
-
-  // Hapus kode verifikasi yang sudah kedaluwarsa
-  cleanupExpiredCodes(): void {
-    const now = new Date();
-    for (const [email, data] of this.verificationCodes.entries()) {
-      if (now > data.expiresAt) {
-        this.verificationCodes.delete(email);
+      if (result.success) {
+        console.log('✅ EmailService: Kode berhasil diverifikasi via backend');
+        return true;
+      } else {
+        console.error('❌ EmailService: Verifikasi gagal:', result.message);
+        return false;
       }
+    } catch (error) {
+      console.error('💥 EmailService: Network error saat verifikasi:', error);
+      return false;
     }
   }
 
-  // Cek apakah email sudah terverifikasi
-  isEmailVerified(email: string): boolean {
-    const verificationData = this.verificationCodes.get(email);
-    return verificationData ? verificationData.isUsed : false;
-  }
-
-  // Simulasi template email (dalam implementasi nyata, ini akan menggunakan template HTML)
-  private getEmailTemplate(code: string): string {
-    return `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #0d9488;">Verifikasi Email - Laundry Kita</h2>
-        <p>Terima kasih telah mendaftar di Laundry Kita!</p>
-        <p>Gunakan kode verifikasi berikut untuk mengaktifkan akun Anda:</p>
-        <div style="background: #f0fdfa; padding: 20px; text-align: center; margin: 20px 0;">
-          <h1 style="color: #0d9488; font-size: 32px; letter-spacing: 5px; margin: 0;">${code}</h1>
-        </div>
-        <p>Kode ini berlaku selama 15 menit.</p>
-        <p>Jika Anda tidak mendaftar di Laundry Kita, abaikan email ini.</p>
-        <hr style="margin: 30px 0;">
-        <p style="color: #64748b; font-size: 12px;">© 2025 Laundry Kita. All rights reserved.</p>
-      </div>
-    `;
+  // Health check backend API
+  async checkApiHealth(): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/health`);
+      const result: ApiResponse = await response.json();
+      
+      console.log('🏥 EmailService: Backend health check:', result.success ? 'OK' : 'FAIL');
+      return result.success;
+    } catch (error) {
+      console.error('💥 EmailService: Backend tidak dapat diakses:', error);
+      return false;
+    }
   }
 }
 
 // Export singleton instance
 export const emailService = new EmailService();
-
-// Cleanup expired codes setiap 5 menit
-setInterval(() => {
-  emailService.cleanupExpiredCodes();
-}, 5 * 60 * 1000);

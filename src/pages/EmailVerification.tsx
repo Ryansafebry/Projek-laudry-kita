@@ -17,7 +17,7 @@ import { Shirt, Mail, CheckCircle, XCircle, RefreshCw } from "lucide-react";
 const EmailVerification = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { verifyEmail, resendVerificationEmail } = useAuth();
+  const { verifyEmail, resendVerificationEmail, bypassEmailVerification } = useAuth();
   const { toast } = useToast();
   
   const [verificationCode, setVerificationCode] = useState("");
@@ -251,6 +251,57 @@ const EmailVerification = () => {
                   "Kirim ulang kode verifikasi"
                 )}
               </Button>
+              
+              {/* Development Mode: Show verification code */}
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-xs text-yellow-800 font-medium mb-2">
+                  🔧 Mode Development
+                </p>
+                <p className="text-xs text-yellow-700 mb-2">
+                  Kode verifikasi ditampilkan di Console Browser (F12 → Console)
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    if (email) {
+                      setIsLoading(true);
+                      try {
+                        const success = await bypassEmailVerification(email);
+                        if (success) {
+                          setIsVerified(true);
+                          toast({
+                            title: "Berhasil!",
+                            description: "Email berhasil diverifikasi (bypass mode). Anda akan diarahkan ke halaman login.",
+                          });
+                          setTimeout(() => {
+                            navigate("/");
+                          }, 2000);
+                        } else {
+                          toast({
+                            title: "Gagal",
+                            description: "Gagal memverifikasi email.",
+                            variant: "destructive"
+                          });
+                        }
+                      } catch (error) {
+                        toast({
+                          title: "Error",
+                          description: "Terjadi kesalahan saat bypass verifikasi.",
+                          variant: "destructive"
+                        });
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }
+                  }}
+                  disabled={isLoading}
+                  className="w-full text-xs border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+                >
+                  🚀 Bypass Verifikasi (Development Only)
+                </Button>
+              </div>
             </div>
 
             <div className="text-center text-sm text-slate-600">

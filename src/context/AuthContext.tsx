@@ -10,16 +10,18 @@ import {
 
 type UserWithPassword = User & { password?: string; isEmailVerified?: boolean };
 
-// Definisikan tipe untuk konteks
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
-  updateUser: (user: User) => void;
+  updateUser: (userData: User) => void;
   register: (userData: Omit<User, "id"> & { password?: string }) => Promise<{ success: boolean; email?: string }>;
   verifyEmail: (email: string, code: string) => Promise<boolean>;
   resendVerificationEmail: (email: string) => Promise<boolean>;
+  bypassEmailVerification: (email: string) => Promise<boolean>;
+  clearAllUsers: () => void;
+  getAllUsers: () => UserWithPassword[];
 }
 
 // Buat konteks dengan nilai default
@@ -100,10 +102,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const register = async (userData: Omit<User, "id"> & { password?: string }): Promise<{ success: boolean; email?: string }> => {
+    console.log('🔍 AuthContext: Memulai registrasi user...', userData.email);
+    
     const storedUsers = localStorage.getItem("users");
     const users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
 
-    if (users.some(u => u.username === userData.username || u.email === userData.email)) {
+    console.log('👥 AuthContext: Users yang sudah ada:', users.length);
+
+    // Debug: tampilkan semua users yang ada
+    console.log('🔍 AuthContext: Semua users di localStorage:', users.map(u => ({
+      username: u.username,
+      email: u.email,
+      id: u.id
+    })));
+
+    // Cek duplikasi
+    const existingUser = users.find(u => u.username === userData.username || u.email === userData.email);
+    if (existingUser) {
+      console.log('❌ AuthContext: User sudah ada:', {
+        existingUsername: existingUser.username,
+        existingEmail: existingUser.email,
+        newUsername: userData.username,
+        newEmail: userData.email
+      });
       return { success: false }; // User already exists
     }
 
@@ -113,20 +134,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isEmailVerified: false, // Email belum diverifikasi
     };
     
+    console.log('➕ AuthContext: Menambah user baru:', newUser.email);
     users.push(newUser);
     localStorage.setItem("users", JSON.stringify(users));
 
     // Kirim email verifikasi
-    const emailResult = await emailService.sendVerificationEmail(userData.email);
-    if (emailResult.success) {
-      return { success: true, email: userData.email };
-    } else {
+    console.log('📧 AuthContext: Mengirim email verifikasi ke:', userData.email);
+    try {
+      const emailResult = await emailService.sendVerificationEmail(userData.email);
+      console.log('📬 AuthContext: Hasil pengiriman email:', emailResult);
+      
+      if (emailResult.success) {
+        console.log('✅ AuthContext: Registrasi berhasil!');
+        return { success: true, email: userData.email };
+      } else {
+        console.log('❌ AuthContext: Gagal mengirim email');
+        return { success: false };
+      }
+    } catch (emailError) {
+      console.error('💥 AuthContext: Error saat mengirim email:', emailError);
       return { success: false };
     }
   };
 
   const verifyEmail = async (email: string, code: string): Promise<boolean> => {
-    const isValid = emailService.verifyCode(email, code);
+    console.log('🔍 AuthContext: Memverifikasi email via backend:', email);
+    
+    const isValid = await emailService.verifyCode(email, code);
     
     if (isValid) {
       // Update status verifikasi user di localStorage
@@ -137,10 +171,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (userIndex > -1) {
         users[userIndex].isEmailVerified = true;
         localStorage.setItem("users", JSON.stringify(users));
+        console.log('✅ AuthContext: Status verifikasi user berhasil diupdate');
         return true;
       }
     }
     
+    console.log('❌ AuthContext: Verifikasi email gagal');
     return false;
   };
 
@@ -149,9 +185,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return result.success;
   };
 
+  const bypassEmailVerification = async (email: string): Promise<boolean> => {
+    // Fungsi bypass untuk development - langsung verifikasi email tanpa kode
+    const storedUsers = localStorage.getItem("users");
+    const users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
+    const userIndex = users.findIndex(u => u.email === email);
+    
+    if (userIndex > -1) {
+      users[userIndex].isEmailVerified = true;
+      localStorage.setItem("users", JSON.stringify(users));
+      console.log(`✅ Email ${email} berhasil diverifikasi (bypass mode)`);
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Debug function untuk membersihkan localStorage
+  const clearAllUsers = () => {
+    localStorage.removeItem("users");
+    console.log('🧹 AuthContext: Semua data users telah dihapus dari localStorage');
+  };
+
+  // Debug function untuk melihat semua users
+  const getAllUsers = () => {
+    const storedUsers = localStorage.getItem("users");
+    const users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
+    console.log('👥 AuthContext: Semua users:', users);
+    return users;
+  };
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, user, login, logout, updateUser, register, verifyEmail, resendVerificationEmail }}
+      value={{ 
+        isAuthenticated, 
+        user, 
+        login, 
+        logout, 
+        updateUser, 
+        register, 
+        verifyEmail, 
+        resendVerificationEmail, 
+        bypassEmailVerification,
+        clearAllUsers,
+        getAllUsers
+      }}
     >
       {children}
     </AuthContext.Provider>
