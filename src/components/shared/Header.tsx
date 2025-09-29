@@ -89,7 +89,7 @@ const Header = () => {
       <div className="w-full flex-1 overflow-hidden bg-gradient-to-r from-teal-50/50 to-cyan-50/50 rounded-lg mx-2 border border-teal-100/50 promo-banner">
         <div className="relative h-8 flex items-center">
           <div className="absolute whitespace-nowrap animate-marquee text-sm font-medium text-teal-700 hover:animate-pulse cursor-pointer promo-text">
-            🎉 Promo Spesial! Cuci 5kg Gratis Setrika • 💧 Deterjen Premium Tersedia • 🚚 Antar Jemput Gratis Area Kota • ⏰ Buka 24 Jam Setiap Hari • 🎁 Member Baru Diskon 20% • ✨ Garansi Bersih 100%
+            GRAND OPENING! Laundry Kita - Solusi Laundry Terpercaya • Kualitas Premium dengan Harga Terjangkau • Diskon 50% untuk 100 Pelanggan Pertama • Pesan Online, Bayar Mudah • Teknologi Modern untuk Hasil Maksimal • Kepuasan Anda, Prioritas Kami!
           </div>
         </div>
       </div>
