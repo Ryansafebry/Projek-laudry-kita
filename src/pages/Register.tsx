@@ -71,7 +71,7 @@ const Register = () => {
     }
 
     try {
-      const success = await register({
+      const result = await register({
         fullName: formData.fullName,
         email: formData.email,
         username: formData.username,
@@ -79,15 +79,15 @@ const Register = () => {
         phone: formData.phone
       });
 
-      if (success) {
+      if (result.success) {
         toast({
           title: "Berhasil!",
-          description: "Akun berhasil dibuat. Silakan login dengan akun baru Anda.",
+          description: "Akun berhasil dibuat. Email verifikasi telah dikirim ke " + result.email,
         });
 
-        // Redirect ke login setelah 2 detik
+        // Redirect ke halaman verifikasi email
         setTimeout(() => {
-          navigate("/");
+          navigate(`/verify-email?email=${encodeURIComponent(result.email || formData.email)}`);
         }, 2000);
       } else {
         toast({

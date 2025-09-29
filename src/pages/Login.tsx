@@ -44,7 +44,6 @@ const Login = () => {
       });
       return;
     }
-
     setIsLoading(true);
     
     try {
@@ -57,11 +56,28 @@ const Login = () => {
         });
         navigate("/dashboard");
       } else {
-        toast({
-          title: "Login Gagal",
-          description: "Username atau password salah. Pastikan Anda sudah mendaftar terlebih dahulu.",
-          variant: "destructive"
-        });
+        // Cek apakah user ada tapi email belum diverifikasi
+        const storedUsers = localStorage.getItem("users");
+        const users = storedUsers ? JSON.parse(storedUsers) : [];
+        const foundUser = users.find((u: any) => u.username === formData.username && u.password === formData.password);
+        
+        if (foundUser && !foundUser.isEmailVerified) {
+          toast({
+            title: "Email Belum Diverifikasi",
+            description: "Silakan verifikasi email Anda terlebih dahulu untuk dapat login.",
+            variant: "destructive"
+          });
+          // Redirect ke halaman verifikasi email
+          setTimeout(() => {
+            navigate(`/verify-email?email=${encodeURIComponent(foundUser.email)}`);
+          }, 2000);
+        } else {
+          toast({
+            title: "Login Gagal",
+            description: "Username atau password salah. Pastikan Anda sudah mendaftar terlebih dahulu.",
+            variant: "destructive"
+          });
+        }
       }
     } catch (error) {
       toast({
