@@ -1,5 +1,6 @@
 import { User } from "../types";
 import { emailService } from "../services/emailService";
+import authService, { RegisterData, LoginData } from "../services/authService";
 import {
   createContext,
   useState,
@@ -63,15 +64,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [isAuthenticated, user]);
 
   const login = async (username: string, password: string): Promise<boolean> => {
+    console.log('🔍 AuthContext: Memulai login via backend...', username);
+    
+    try {
+      // Gunakan backend API untuk login
+      const loginData: LoginData = {
+        identifier: username, // bisa username atau email
+        password: password
+      };
+
+      const result = await authService.login(loginData);
+      
+      if (result.success && result.user) {
+        console.log('✅ AuthContext: Login berhasil via backend!');
+        setIsAuthenticated(true);
+        setUser(result.user);
+        return true;
+      } else {
+        console.log('❌ AuthContext: Login gagal:', result.message);
+        
+        // Jika email belum diverifikasi, masih return false
+        if (result.needsVerification) {
+          console.log('📧 AuthContext: Email belum diverifikasi');
+        }
+        
+        return false;
+      }
+    } catch (error) {
+      console.error('💥 AuthContext: Error saat login via backend:', error);
+      
+      // Fallback ke localStorage jika backend tidak tersedia
+      console.log('🔄 AuthContext: Fallback ke localStorage...');
+      return await loginWithLocalStorage(username, password);
+    }
+  };
+
+  // Fallback function untuk login dengan localStorage
+  const loginWithLocalStorage = async (username: string, password: string): Promise<boolean> => {
     const storedUsers = localStorage.getItem("users");
     const users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
     
     const foundUser = users.find(u => u.username === username && u.password === password);
 
     if (foundUser) {
-      // Cek apakah email sudah diverifikasi
       if (!foundUser.isEmailVerified) {
-        return false; // Email belum diverifikasi
+        return false;
       }
       
       const { password: _, ...userToStore } = foundUser;
@@ -102,57 +139,66 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const register = async (userData: Omit<User, "id"> & { password?: string }): Promise<{ success: boolean; email?: string }> => {
-    console.log('🔍 AuthContext: Memulai registrasi user...', userData.email);
+    console.log('🔍 AuthContext: Memulai registrasi user via backend...', userData.email);
     
+    try {
+      // Gunakan backend API untuk registrasi
+      const registerData: RegisterData = {
+        fullName: userData.fullName,
+        username: userData.username,
+        email: userData.email,
+        password: userData.password || '',
+        phone: userData.phone
+      };
+
+      const result = await authService.register(registerData);
+      
+      if (result.success) {
+        console.log('✅ AuthContext: Registrasi berhasil via backend!');
+        return { 
+          success: true, 
+          email: result.email || userData.email 
+        };
+      } else {
+        console.log('❌ AuthContext: Registrasi gagal:', result.message);
+        return { success: false };
+      }
+    } catch (error) {
+      console.error('💥 AuthContext: Error saat registrasi via backend:', error);
+      
+      // Fallback ke localStorage jika backend tidak tersedia
+      console.log('🔄 AuthContext: Fallback ke localStorage...');
+      return await registerWithLocalStorage(userData);
+    }
+  };
+
+  // Fallback function untuk registrasi dengan localStorage
+  const registerWithLocalStorage = async (userData: Omit<User, "id"> & { password?: string }): Promise<{ success: boolean; email?: string }> => {
     const storedUsers = localStorage.getItem("users");
     const users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
-
-    console.log('👥 AuthContext: Users yang sudah ada:', users.length);
-
-    // Debug: tampilkan semua users yang ada
-    console.log('🔍 AuthContext: Semua users di localStorage:', users.map(u => ({
-      username: u.username,
-      email: u.email,
-      id: u.id
-    })));
 
     // Cek duplikasi
     const existingUser = users.find(u => u.username === userData.username || u.email === userData.email);
     if (existingUser) {
-      console.log('❌ AuthContext: User sudah ada:', {
-        existingUsername: existingUser.username,
-        existingEmail: existingUser.email,
-        newUsername: userData.username,
-        newEmail: userData.email
-      });
-      return { success: false }; // User already exists
+      return { success: false };
     }
 
     const newUser: UserWithPassword = {
       id: new Date().toISOString(),
       ...userData,
-      isEmailVerified: false, // Email belum diverifikasi
+      isEmailVerified: false,
     };
     
-    console.log('➕ AuthContext: Menambah user baru:', newUser.email);
     users.push(newUser);
     localStorage.setItem("users", JSON.stringify(users));
 
     // Kirim email verifikasi
-    console.log('📧 AuthContext: Mengirim email verifikasi ke:', userData.email);
     try {
       const emailResult = await emailService.sendVerificationEmail(userData.email);
-      console.log('📬 AuthContext: Hasil pengiriman email:', emailResult);
-      
-      if (emailResult.success) {
-        console.log('✅ AuthContext: Registrasi berhasil!');
-        return { success: true, email: userData.email };
-      } else {
-        console.log('❌ AuthContext: Gagal mengirim email');
-        return { success: false };
-      }
+      return emailResult.success ? 
+        { success: true, email: userData.email } : 
+        { success: false };
     } catch (emailError) {
-      console.error('💥 AuthContext: Error saat mengirim email:', emailError);
       return { success: false };
     }
   };
@@ -160,10 +206,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const verifyEmail = async (email: string, code: string): Promise<boolean> => {
     console.log('🔍 AuthContext: Memverifikasi email via backend:', email);
     
+    try {
+      // Gunakan backend API untuk verifikasi
+      const result = await authService.verifyEmail(email, code);
+      
+      if (result.success) {
+        console.log('✅ AuthContext: Verifikasi email berhasil via backend!');
+        return true;
+      } else {
+        console.log('❌ AuthContext: Verifikasi email gagal:', result.message);
+        return false;
+      }
+    } catch (error) {
+      console.error('💥 AuthContext: Error saat verifikasi email via backend:', error);
+      
+      // Fallback ke emailService dan localStorage
+      console.log('🔄 AuthContext: Fallback ke emailService...');
+      return await verifyEmailWithLocalStorage(email, code);
+    }
+  };
+
+  // Fallback function untuk verifikasi email dengan localStorage
+  const verifyEmailWithLocalStorage = async (email: string, code: string): Promise<boolean> => {
     const isValid = await emailService.verifyCode(email, code);
     
     if (isValid) {
-      // Update status verifikasi user di localStorage
       const storedUsers = localStorage.getItem("users");
       const users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
       const userIndex = users.findIndex(u => u.email === email);
@@ -171,12 +238,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (userIndex > -1) {
         users[userIndex].isEmailVerified = true;
         localStorage.setItem("users", JSON.stringify(users));
-        console.log('✅ AuthContext: Status verifikasi user berhasil diupdate');
         return true;
       }
     }
     
-    console.log('❌ AuthContext: Verifikasi email gagal');
     return false;
   };
 
