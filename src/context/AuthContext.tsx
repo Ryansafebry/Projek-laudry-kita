@@ -93,6 +93,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('💥 AuthContext: Error saat login via backend:', error);
       
+      // Cek jenis error
+      if (error.name === 'AbortError') {
+        console.log('⏰ AuthContext: Request timeout, menggunakan fallback...');
+      } else if (error.message.includes('fetch')) {
+        console.log('🌐 AuthContext: Network error, menggunakan fallback...');
+      } else {
+        console.log('🔄 AuthContext: Backend error, menggunakan fallback...');
+      }
+      
       // Fallback ke localStorage jika backend tidak tersedia
       console.log('🔄 AuthContext: Fallback ke localStorage...');
       return await loginWithLocalStorage(username, password);
@@ -163,8 +172,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('❌ AuthContext: Registrasi gagal:', result.message);
         return { success: false };
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('💥 AuthContext: Error saat registrasi via backend:', error);
+      
+      // Cek jenis error
+      if (error?.name === 'AbortError') {
+        console.log('⏰ AuthContext: Request timeout, menggunakan fallback...');
+      } else if (error?.message?.includes('fetch')) {
+        console.log('🌐 AuthContext: Network error, menggunakan fallback...');
+      } else if (error?.message?.includes('CORS')) {
+        console.log('🌐 AuthContext: CORS error, menggunakan fallback...');
+      } else {
+        console.log('🔄 AuthContext: Backend error, menggunakan fallback...');
+      }
       
       // Fallback ke localStorage jika backend tidak tersedia
       console.log('🔄 AuthContext: Fallback ke localStorage...');
@@ -269,6 +289,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Debug function untuk membersihkan localStorage
   const clearAllUsers = () => {
     localStorage.removeItem("users");
+    localStorage.removeItem("user");
+    localStorage.removeItem("isAuthenticated");
     console.log('🧹 AuthContext: Semua data users telah dihapus dari localStorage');
   };
 

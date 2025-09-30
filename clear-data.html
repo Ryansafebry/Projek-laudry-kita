@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Data - Laundry Kita</title>
+</head>
+<body>
+    <h1>Clear All Data</h1>
+    <button onclick="clearAllData()">Clear LocalStorage & Reload</button>
+    
+    <script>
+        function clearAllData() {
+            localStorage.clear();
+            sessionStorage.clear();
+            alert('All data cleared!');
+            window.location.reload();
+        }
+        
+        // Auto clear on load
+        clearAllData();
+    </script>
+</body>
+</html>

@@ -84,7 +84,7 @@ class EmailService {
     console.log('📧 EmailService: Mengirim request ke backend API untuk:', email);
     
     try {
-      const response = await fetch(`${this.apiBaseUrl}/send-verification-email`, {
+      const response = await fetch(`${this.apiBaseUrl}/api/send-verification-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,7 +119,7 @@ class EmailService {
     console.log('🔍 EmailService: Mengirim request verifikasi ke backend untuk:', email);
     
     try {
-      const response = await fetch(`${this.apiBaseUrl}/verify-email`, {
+      const response = await fetch(`${this.apiBaseUrl}/api/auth/verify-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

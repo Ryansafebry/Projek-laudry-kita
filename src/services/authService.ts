@@ -1,7 +1,7 @@
 import { User } from '../types';
 
 // Gunakan relative URL untuk memanfaatkan Vite proxy
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export interface RegisterData {
   fullName: string;
@@ -27,6 +27,24 @@ export interface ApiResponse<T = any> {
 }
 
 class AuthService {
+  // Helper method untuk membuat fetch request dengan timeout
+  private async fetchWithTimeout(url: string, options: RequestInit, timeout = 5000): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
+  }
+
   // Register user baru
   async register(userData: RegisterData): Promise<ApiResponse> {
     try {
@@ -37,13 +55,13 @@ class AuthService {
       const url = `${API_BASE_URL}/api/auth/register`;
       console.log('🎯 AuthService: Full URL:', url);
       
-      const response = await fetch(url, {
+      const response = await this.fetchWithTimeout(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(userData),
-      });
+      }, 5000);
 
       console.log('📡 AuthService: Response status:', response.status);
       console.log('📡 AuthService: Response ok:', response.ok);
@@ -61,16 +79,26 @@ class AuthService {
       console.log('📥 AuthService: Response register dari backend:', result);
       
       return result;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ AuthService: Error saat register:', error);
       console.error('❌ AuthService: Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
+        name: error?.name || 'Unknown',
+        message: error?.message || 'Unknown error',
+        stack: error?.stack || 'No stack trace'
       });
+      
+      let errorMessage = 'Gagal terhubung ke server';
+      if (error?.name === 'AbortError') {
+        errorMessage = 'Request timeout - server tidak merespons';
+      } else if (error?.message?.includes('fetch')) {
+        errorMessage = 'Tidak dapat terhubung ke server';
+      } else if (error?.message?.includes('CORS')) {
+        errorMessage = 'CORS error - konfigurasi server bermasalah';
+      }
+      
       return {
         success: false,
-        message: 'Gagal terhubung ke server'
+        message: errorMessage
       };
     }
   }
@@ -85,13 +113,13 @@ class AuthService {
       const url = `${API_BASE_URL}/api/auth/login`;
       console.log('🎯 AuthService: Full URL:', url);
       
-      const response = await fetch(url, {
+      const response = await this.fetchWithTimeout(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(loginData),
-      });
+      }, 5000);
 
       console.log('📡 AuthService: Response status:', response.status);
       console.log('📡 AuthService: Response ok:', response.ok);
@@ -109,16 +137,26 @@ class AuthService {
       console.log('📥 AuthService: Response login dari backend:', result);
       
       return result;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ AuthService: Error saat login:', error);
       console.error('❌ AuthService: Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
+        name: error?.name || 'Unknown',
+        message: error?.message || 'Unknown error',
+        stack: error?.stack || 'No stack trace'
       });
+      
+      let errorMessage = 'Gagal terhubung ke server';
+      if (error?.name === 'AbortError') {
+        errorMessage = 'Request timeout - server tidak merespons';
+      } else if (error?.message?.includes('fetch')) {
+        errorMessage = 'Tidak dapat terhubung ke server';
+      } else if (error?.message?.includes('CORS')) {
+        errorMessage = 'CORS error - konfigurasi server bermasalah';
+      }
+      
       return {
         success: false,
-        message: 'Gagal terhubung ke server'
+        message: errorMessage
       };
     }
   }
