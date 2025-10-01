@@ -29,8 +29,9 @@ export const supabaseService = {
       .from('profiles')
       .insert([
         {
+          id: user.id,
           user_id: user.id,
-          full_name: user.user_metadata.fullName || 'New User',
+          full_name: user.user_metadata.full_name || user.user_metadata.fullName || 'New User',
           username: user.user_metadata.username || user.email,
           email: user.email,
           phone: user.user_metadata.phone,
