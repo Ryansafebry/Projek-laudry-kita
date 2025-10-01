@@ -39,7 +39,7 @@ export class SupabaseService {
       return { success: true, user: data.user }
     } catch (error: any) {
       console.error('Supabase signIn error:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: error.message, user: null }
     }
   }
 

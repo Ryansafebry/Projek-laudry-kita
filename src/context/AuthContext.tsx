@@ -85,11 +85,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const { success, error } = await supabaseService.signIn(email, password);
-    if (success) {
-      return true;
+    const { success, error, user: supabaseUser } = await supabaseService.signIn(email, password);
+    
+    if (success && supabaseUser) {
+      // Manually set the user state immediately to avoid race conditions
+      let profile = await supabaseService.getProfile(supabaseUser.id);
+      if (!profile) {
+        profile = await supabaseService.createProfileFromUser(supabaseUser);
+      }
+      
+      if (profile) {
+        setUser({
+          id: profile.user_id,
+          fullName: profile.full_name,
+          username: profile.username,
+          email: profile.email,
+          phone: profile.phone || undefined,
+          bio: profile.bio || undefined,
+          profilePic: profile.avatar_url || undefined,
+        });
+        setIsAuthenticated(true);
+        return true;
+      }
     }
+    
+    // If login fails for any reason, ensure state is cleared
     console.error("Login failed:", error);
+    setUser(null);
+    setIsAuthenticated(false);
     return false;
   };
 
@@ -97,6 +120,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabaseService.signOut();
     setUser(null);
     setIsAuthenticated(false);
+    // Force clear local storage to ensure a clean state for the next login
+    localStorage.clear();
   };
 
   const register = async (userData: Omit<User, "id"> & { password: string }): Promise<{ success: boolean; email?: string }> => {
