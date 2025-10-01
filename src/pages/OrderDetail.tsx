@@ -107,15 +107,15 @@ const OrderDetail = () => {
         <CardHeader>
           <CardTitle>Informasi Order</CardTitle>
           <CardDescription>
-            Tanggal Order: {formatDate(order.date)}
+            Tanggal Order: {formatDate(order.orderDate)}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <h3 className="font-semibold">Pelanggan</h3>
-              <p>{order.customer}</p>
-              <p className="text-sm text-muted-foreground">{order.customerPhone}</p>
+              <p>{order.customer.name}</p>
+              <p className="text-sm text-muted-foreground">{order.customer.phone}</p>
             </div>
             <div className="text-right">
               <h3 className="font-semibold">Status</h3>
@@ -125,7 +125,9 @@ const OrderDetail = () => {
           <Separator className="my-4" />
           <div>
             <h3 className="font-semibold mb-2">Item Order</h3>
-            <p>{order.items}</p>
+            <div className="text-sm text-muted-foreground">
+              {order.items.map(item => `${item.name} (${item.weight}kg)`).join(', ')}
+            </div>
           </div>
         </CardContent>
       </Card>
