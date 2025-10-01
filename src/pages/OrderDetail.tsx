@@ -15,27 +15,22 @@ import { Skeleton } from '@/components/ui/skeleton';
 type OrderWithItems = Tables<'orders'> & { order_items: Tables<'order_items'>[] };
 
 const OrderDetail = () => {
-  const { orderId } = useParams<{ orderId: string }>();
+  const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const [order, setOrder] = useState<OrderWithItems | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchOrder = async () => {
-      if (orderId && user) {
+      if (id && user) {
         setLoading(true);
-        try {
-          const data = await supabaseService.getOrderById(orderId, user.id);
-          setOrder(data);
-        } finally {
-          setLoading(false);
-        }
-      } else {
+        const data = await supabaseService.getOrderById(id, user.id);
+        setOrder(data);
         setLoading(false);
       }
     };
     fetchOrder();
-  }, [orderId, user]);
+  }, [id, user]);
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status.toLowerCase()) {
@@ -62,6 +57,7 @@ const OrderDetail = () => {
     );
   }
 
+  // Perhitungan sisa tagihan yang sudah diperbaiki
   const remainingBill = Math.max(0, order.total_price - order.amount_paid);
   const isPaid = remainingBill === 0;
 
