@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const Register = () => {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, useSupabase } = useAuth();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     fullName: "",
@@ -71,13 +71,6 @@ const Register = () => {
     }
 
     try {
-      console.log('🔄 Memulai proses registrasi...', {
-        fullName: formData.fullName,
-        email: formData.email,
-        username: formData.username,
-        phone: formData.phone
-      });
-
       const result = await register({
         fullName: formData.fullName,
         email: formData.email,
@@ -86,20 +79,25 @@ const Register = () => {
         phone: formData.phone
       });
 
-      console.log('📋 Hasil registrasi:', result);
-
       if (result.success) {
         toast({
           title: "Berhasil!",
-          description: "Akun berhasil dibuat. Email verifikasi telah dikirim ke " + result.email,
+          description: useSupabase
+            ? "Akun berhasil dibuat. Cek email Anda untuk verifikasi."
+            : "Akun berhasil dibuat. Email verifikasi telah dikirim ke " + result.email,
         });
 
-        // Redirect ke halaman verifikasi email
-        setTimeout(() => {
-          navigate(`/verify-email?email=${encodeURIComponent(result.email || formData.email)}`);
-        }, 2000);
+        // Redirect ke halaman verifikasi email atau login
+        if (useSupabase) {
+          setTimeout(() => {
+            navigate("/");
+          }, 2000);
+        } else {
+          setTimeout(() => {
+            navigate(`/verify-email?email=${encodeURIComponent(result.email || formData.email)}`);
+          }, 2000);
+        }
       } else {
-        console.error('❌ Registrasi gagal:', result);
         toast({
           title: "Registrasi Gagal",
           description: "Username atau email sudah digunakan. Silakan gunakan yang lain.",
@@ -107,7 +105,6 @@ const Register = () => {
         });
       }
     } catch (error) {
-      console.error('💥 Error saat registrasi:', error);
       toast({
         title: "Error",
         description: "Terjadi kesalahan saat mendaftar. Silakan coba lagi.",

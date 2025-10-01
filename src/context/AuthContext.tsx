@@ -75,6 +75,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [isAuthenticated, user]);
 
   const login = async (username: string, password: string): Promise<boolean> => {
+    if (useSupabase) {
+      return await supabaseLogin(username, password);
+    }
+
     console.log('🔍 AuthContext: Memulai login via backend...', username);
     
     try {
@@ -139,7 +143,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return false;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    if (useSupabase) {
+      await supabaseService.signOut();
+    }
     setIsAuthenticated(false);
     setUser(null);
     localStorage.removeItem("user");
@@ -148,17 +155,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateUser = (updatedUserData: User) => {
     setUser(updatedUserData);
-    const storedUsers = localStorage.getItem("users");
-    let users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
-    const userIndex = users.findIndex(u => u.id === updatedUserData.id);
-    if (userIndex > -1) {
-      const oldPassword = users[userIndex].password;
-      users[userIndex] = { ...updatedUserData, password: oldPassword };
-      localStorage.setItem("users", JSON.stringify(users));
+    if (!useSupabase) {
+      const storedUsers = localStorage.getItem("users");
+      let users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
+      const userIndex = users.findIndex(u => u.id === updatedUserData.id);
+      if (userIndex > -1) {
+        const oldPassword = users[userIndex].password;
+        users[userIndex] = { ...updatedUserData, password: oldPassword };
+        localStorage.setItem("users", JSON.stringify(users));
+      }
+    } else {
+      // Update Supabase profile
+      supabaseService.updateProfile(updatedUserData.id, {
+        full_name: updatedUserData.fullName,
+        username: updatedUserData.username,
+        phone: updatedUserData.phone,
+        bio: updatedUserData.bio
+      });
     }
   };
 
   const register = async (userData: Omit<User, "id"> & { password?: string }): Promise<{ success: boolean; email?: string }> => {
+    if (useSupabase) {
+      return await supabaseRegister({ ...userData, password: userData.password || '' });
+    }
+
     console.log('🔍 AuthContext: Memulai registrasi user via backend...', userData.email);
     
     try {
@@ -235,6 +256,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const verifyEmail = async (email: string, code: string): Promise<boolean> => {
+    // Verifikasi via Supabase tidak memerlukan kode manual, tapi kita biarkan untuk fallback
+    if (useSupabase) {
+      // Supabase verification happens via magic link, this function is for manual code entry
+      // We can assume if this is called, it's a fallback or non-Supabase flow
+    }
+
     console.log('🔍 AuthContext: Memverifikasi email via backend:', email);
     
     try {

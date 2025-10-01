@@ -14,13 +14,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Shirt } from "lucide-react";
+import SupabaseToggle from "@/components/SupabaseToggle";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, useSupabase } = useAuth();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
-    username: "",
+    emailOrUsername: "",
     password: "",
     rememberMe: false
   });
@@ -36,10 +37,10 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.username || !formData.password) {
+    if (!formData.emailOrUsername || !formData.password) {
       toast({
         title: "Error",
-        description: "Username dan password harus diisi",
+        description: "Email/Username dan password harus diisi",
         variant: "destructive"
       });
       return;
@@ -47,7 +48,7 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      const success = await login(formData.username, formData.password);
+      const success = await login(formData.emailOrUsername, formData.password);
       
       if (success) {
         toast({
@@ -56,28 +57,13 @@ const Login = () => {
         });
         navigate("/dashboard");
       } else {
-        // Cek apakah user ada tapi email belum diverifikasi
-        const storedUsers = localStorage.getItem("users");
-        const users = storedUsers ? JSON.parse(storedUsers) : [];
-        const foundUser = users.find((u: any) => u.username === formData.username && u.password === formData.password);
-        
-        if (foundUser && !foundUser.isEmailVerified) {
-          toast({
-            title: "Email Belum Diverifikasi",
-            description: "Silakan verifikasi email Anda terlebih dahulu untuk dapat login.",
-            variant: "destructive"
-          });
-          // Redirect ke halaman verifikasi email
-          setTimeout(() => {
-            navigate(`/verify-email?email=${encodeURIComponent(foundUser.email)}`);
-          }, 2000);
-        } else {
-          toast({
-            title: "Login Gagal",
-            description: "Username atau password salah. Pastikan Anda sudah mendaftar terlebih dahulu.",
-            variant: "destructive"
-          });
-        }
+        toast({
+          title: "Login Gagal",
+          description: useSupabase 
+            ? "Email atau password salah. Silakan cek kembali."
+            : "Username atau password salah, atau email belum diverifikasi.",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       toast({
@@ -92,7 +78,7 @@ const Login = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/30 to-slate-100 p-4">
-      <Card className="w-full max-w-sm shadow-2xl border-0 bg-white/90 backdrop-blur-md">
+      <Card className="w-full max-w-sm shadow-2xl border-0 bg-white/90 backdrop-blur-md mb-6">
         <CardHeader className="text-center">
           <div className="flex justify-center items-center gap-2 mb-2">
             <div className="p-3 rounded-2xl bg-gradient-blue shadow-lg">
@@ -107,13 +93,13 @@ const Login = () => {
         <CardContent>
           <form onSubmit={handleLogin} className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="username" className="text-black">Username</Label>
+              <Label htmlFor="emailOrUsername" className="text-black">Email atau Username</Label>
               <Input
-                id="username"
+                id="emailOrUsername"
                 type="text"
-                placeholder="Masukan username"
-                value={formData.username}
-                onChange={(e) => handleInputChange('username', e.target.value)}
+                placeholder="Masukan email atau username"
+                value={formData.emailOrUsername}
+                onChange={(e) => handleInputChange('emailOrUsername', e.target.value)}
                 required
                 className="border-teal-200 focus:border-teal-500 focus:ring-teal-500/20"
               />
@@ -161,6 +147,9 @@ const Login = () => {
           </form>
         </CardContent>
       </Card>
+      
+      <SupabaseToggle />
+
       <footer className="mt-8 text-center text-sm text-teal-600/70">
         © Laundry Kita 2025
       </footer>
