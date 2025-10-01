@@ -8,6 +8,7 @@ import {
   ReactNode,
   useEffect,
 } from "react";
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -30,10 +31,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [useSupabase, setUseSupabase] = useState<boolean>(true);
 
   useEffect(() => {
-    const fetchAndSetUser = async (sessionUser: any) => {
+    setLoading(true);
+
+    // Single function to update user state based on a Supabase user object
+    const updateUserState = async (sessionUser: SupabaseUser | null) => {
+      if (!sessionUser) {
+        setUser(null);
+        setIsAuthenticated(false);
+        return;
+      }
+
+      // User is authenticated with Supabase, now get our application profile
       let profile = await supabaseService.getProfile(sessionUser.id);
+
+      // Fallback: If profile doesn't exist (e.g., due to DB trigger delay), try creating it.
       if (!profile) {
-        // If profile doesn't exist, try creating it. This is a fallback.
+        console.warn(`Profile not found for user ${sessionUser.id}. Attempting to create a fallback profile.`);
         profile = await supabaseService.createProfileFromUser(sessionUser);
       }
 
@@ -49,34 +62,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
         setIsAuthenticated(true);
       } else {
-        // If profile still can't be fetched/created, something is wrong.
-        // Log the user out to prevent being in a broken state.
+        console.error(`CRITICAL: Failed to get or create a profile for authenticated user ${sessionUser.id}.`);
+        // If we still can't get a profile, it's safer to sign out.
         await supabase.auth.signOut();
         setUser(null);
         setIsAuthenticated(false);
       }
     };
 
-    const initializeSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await fetchAndSetUser(session.user);
-      }
-      setLoading(false);
-    };
-
-    initializeSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        await fetchAndSetUser(session.user);
-      } else {
-        setUser(null);
-        setIsAuthenticated(false);
-      }
+    // 1. Check for an existing session when the app loads
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      updateUserState(session?.user ?? null).finally(() => {
+        setLoading(false);
+      });
     });
 
-    return () => subscription.unsubscribe();
+    // 2. Listen for future auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        await updateUserState(session?.user ?? null);
+        // The initial loading is already handled, no need to set it here.
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
