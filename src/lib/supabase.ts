@@ -38,20 +38,13 @@ export interface Database {
           phone?: string | null
           bio?: string | null
           avatar_url?: string | null
-          created_at?: string
-          updated_at?: string
         }
         Update: {
-          id?: string
-          user_id?: string
           full_name?: string
           username?: string
-          email?: string
           phone?: string | null
           bio?: string | null
           avatar_url?: string | null
-          created_at?: string
-          updated_at?: string
         }
       }
       orders: {
@@ -61,15 +54,9 @@ export interface Database {
           customer_name: string
           customer_phone: string | null
           customer_address: string | null
-          service_type: string
-          weight: number
-          price_per_kg: number
           total_price: number
-          status: 'pending' | 'processing' | 'completed' | 'picked_up'
-          entry_date: string
-          estimated_completion: string | null
-          completion_date: string | null
-          pickup_date: string | null
+          amount_paid: number
+          status: string
           notes: string | null
           created_at: string
           updated_at: string
@@ -80,37 +67,46 @@ export interface Database {
           customer_name: string
           customer_phone?: string | null
           customer_address?: string | null
-          service_type: string
-          weight: number
-          price_per_kg: number
           total_price: number
-          status?: 'pending' | 'processing' | 'completed' | 'picked_up'
-          entry_date: string
-          estimated_completion?: string | null
-          completion_date?: string | null
-          pickup_date?: string | null
+          amount_paid?: number
+          status?: string
           notes?: string | null
-          created_at?: string
-          updated_at?: string
         }
         Update: {
-          id?: string
-          user_id?: string
           customer_name?: string
           customer_phone?: string | null
           customer_address?: string | null
-          service_type?: string
+          total_price?: number
+          amount_paid?: number
+          status?: string
+          notes?: string | null
+        }
+      }
+      order_items: {
+        Row: {
+          id: string
+          order_id: string
+          user_id: string
+          service_name: string
+          weight: number
+          price_per_kg: number
+          subtotal: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          order_id: string
+          user_id: string
+          service_name: string
+          weight: number
+          price_per_kg: number
+          subtotal: number
+        }
+        Update: {
+          service_name?: string
           weight?: number
           price_per_kg?: number
-          total_price?: number
-          status?: 'pending' | 'processing' | 'completed' | 'picked_up'
-          entry_date?: string
-          estimated_completion?: string | null
-          completion_date?: string | null
-          pickup_date?: string | null
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
+          subtotal?: number
         }
       }
       payments: {
@@ -119,8 +115,8 @@ export interface Database {
           order_id: string
           user_id: string
           amount: number
-          payment_method: 'cash' | 'transfer' | 'card'
-          payment_status: 'pending' | 'paid' | 'partial'
+          payment_method: string
+          payment_status: string
           payment_date: string | null
           notes: string | null
           created_at: string
@@ -131,24 +127,17 @@ export interface Database {
           order_id: string
           user_id: string
           amount: number
-          payment_method: 'cash' | 'transfer' | 'card'
-          payment_status?: 'pending' | 'paid' | 'partial'
+          payment_method: string
+          payment_status?: string
           payment_date?: string | null
           notes?: string | null
-          created_at?: string
-          updated_at?: string
         }
         Update: {
-          id?: string
-          order_id?: string
-          user_id?: string
           amount?: number
-          payment_method?: 'cash' | 'transfer' | 'card'
-          payment_status?: 'pending' | 'paid' | 'partial'
+          payment_method?: string
+          payment_status?: string
           payment_date?: string | null
           notes?: string | null
-          created_at?: string
-          updated_at?: string
         }
       }
       customers: {
@@ -172,24 +161,12 @@ export interface Database {
           phone?: string | null
           email?: string | null
           address?: string | null
-          total_orders?: number
-          total_spent?: number
-          last_order_date?: string | null
-          created_at?: string
-          updated_at?: string
         }
         Update: {
-          id?: string
-          user_id?: string
           name?: string
           phone?: string | null
           email?: string | null
           address?: string | null
-          total_orders?: number
-          total_spent?: number
-          last_order_date?: string | null
-          created_at?: string
-          updated_at?: string
         }
       }
     }
