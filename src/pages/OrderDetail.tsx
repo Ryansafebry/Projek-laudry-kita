@@ -1,148 +1,238 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useOrders } from "@/context/OrderContext";
+import { useState } from "react";
+import { useParams } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Printer, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { useState } from "react";
+import { DollarSign, CheckCircle, Truck, PackageCheck } from "lucide-react";
 import PaymentDialog from "@/components/PaymentDialog";
-import { calculateOrderTotals } from "@/utils/orderUtils";
+import { useOrders } from "@/context/OrderContext";
+import { useNotifications } from "@/context/NotificationContext";
+import { useToast } from "@/hooks/use-toast";
+import { sendOrderNotification, sendAutomaticWhatsApp } from "@/utils/whatsapp";
+import { convertYYYYMMDDtoDDMMYYYY } from "@/utils/dateFormat";
+import { cn } from "@/lib/utils";
 
 const OrderDetail = () => {
-  const { orderId } = useParams();
-  const navigate = useNavigate();
-  const { orders, services, updateOrderStatus, deleteOrder } = useOrders();
+  const { orderId } = useParams<{ orderId: string }>();
+  const { orders, updateOrderStatus } = useOrders();
+  const { addOrderNotification } = useNotifications();
+  const { toast } = useToast();
+  const order = orders.find(o => o.id === orderId);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
-  const order = orders.find((o) => o.id === orderId);
-
   if (!order) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full">
-        <p className="text-2xl font-semibold mb-4">Pesanan tidak ditemukan</p>
-        <Button onClick={() => navigate("/orders")}>Kembali ke Daftar Pesanan</Button>
-      </div>
-    );
+    return <div>Order not found</div>;
   }
 
-  const { total, amountPaid, remainingBalance } = calculateOrderTotals(order, services);
-  const getService = (serviceId: string) => services.find(s => s.id === serviceId);
+  const orderStatuses = ["Baru", "Diproses", "Selesai", "Diambil"];
+  const amountDue = order.total - order.amountPaid;
 
-  const statusConfig = {
-    Baru: { color: "bg-blue-500", text: "Baru" },
-    Proses: { color: "bg-yellow-500", text: "Proses" },
-    Selesai: { color: "bg-green-500", text: "Selesai" },
-    Diambil: { color: "bg-gray-500", text: "Diambil" },
+  const handlePaymentSuccess = () => {
+    // Di aplikasi nyata, Anda akan memuat ulang data pesanan di sini
+    // untuk menampilkan status pembayaran yang diperbarui.
+    console.log("Pembayaran berhasil, memuat ulang data...");
   };
 
-  const handleDelete = () => {
-    if (window.confirm("Apakah Anda yakin ingin menghapus pesanan ini?")) {
-      deleteOrder(order.id);
-      navigate("/orders");
+  const handleStatusChange = async (newStatus: string) => {
+    if (orderId && order) {
+      updateOrderStatus(orderId, newStatus);
+      
+      // Trigger notification based on status
+      switch (newStatus) {
+        case 'Baru':
+          addOrderNotification(orderId, 'new', order.customer.name);
+          break;
+        case 'Diproses':
+          addOrderNotification(orderId, 'processing', order.customer.name);
+          // Send automatic WhatsApp notification
+          toast({
+            title: "Mengirim WhatsApp...",
+            description: `Sedang mengirim notifikasi ke ${order.customer.name}`,
+          });
+          
+          try {
+            const result = await sendAutomaticWhatsApp(order.customer.name, order.customer.phone, orderId, 'Diproses');
+            toast({
+              title: result.success ? "✅ WhatsApp Terkirim" : "❌ Gagal Mengirim",
+              description: result.message,
+              variant: result.success ? "default" : "destructive",
+            });
+          } catch (error) {
+            toast({
+              title: "❌ Error",
+              description: "Terjadi kesalahan saat mengirim WhatsApp",
+              variant: "destructive",
+            });
+          }
+          break;
+        case 'Selesai':
+          addOrderNotification(orderId, 'completed', order.customer.name);
+          // Send automatic WhatsApp notification
+          toast({
+            title: "Mengirim WhatsApp...",
+            description: `Sedang mengirim notifikasi ke ${order.customer.name}`,
+          });
+          
+          try {
+            const result = await sendAutomaticWhatsApp(order.customer.name, order.customer.phone, orderId, 'Selesai');
+            toast({
+              title: result.success ? "✅ WhatsApp Terkirim" : "❌ Gagal Mengirim",
+              description: result.message,
+              variant: result.success ? "default" : "destructive",
+            });
+          } catch (error) {
+            toast({
+              title: "❌ Error",
+              description: "Terjadi kesalahan saat mengirim WhatsApp",
+              variant: "destructive",
+            });
+          }
+          break;
+        case 'Diambil':
+          addOrderNotification(orderId, 'picked_up', order.customer.name);
+          // Send automatic WhatsApp notification
+          toast({
+            title: "Mengirim WhatsApp...",
+            description: `Sedang mengirim notifikasi ke ${order.customer.name}`,
+          });
+          
+          try {
+            const result = await sendAutomaticWhatsApp(order.customer.name, order.customer.phone, orderId, 'Diambil');
+            toast({
+              title: result.success ? "✅ WhatsApp Terkirim" : "❌ Gagal Mengirim",
+              description: result.message,
+              variant: result.success ? "default" : "destructive",
+            });
+          } catch (error) {
+            toast({
+              title: "❌ Error",
+              description: "Terjadi kesalahan saat mengirim WhatsApp",
+              variant: "destructive",
+            });
+          }
+          break;
+      }
     }
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Detail Pesanan</h1>
-          <p className="text-muted-foreground">Order ID: {order.id}</p>
+    <>
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Detail Pesanan</h1>
+            <p className="text-muted-foreground">Order ID: {order.id}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={order.status} onValueChange={handleStatusChange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Ubah status" />
+              </SelectTrigger>
+              <SelectContent>
+                {orderStatuses.map(status => (
+                  <SelectItem key={status} value={status}>{status}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              onClick={() => handleStatusChange('Diproses')}
+              className={cn(
+                order.status === 'Diproses' && 'bg-yellow-400 text-yellow-900 hover:bg-yellow-500 border-yellow-500'
+              )}
+            >
+              <Truck className="mr-2 h-4 w-4" /> Proses
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleStatusChange('Selesai')}
+              className={cn(
+                order.status === 'Selesai' && 'bg-green-500 text-white hover:bg-green-600 border-green-600'
+              )}
+            >
+              <CheckCircle className="mr-2 h-4 w-4" /> Selesai
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleStatusChange('Diambil')}
+              className={cn(
+                order.status === 'Diambil' && 'bg-blue-500 text-white hover:bg-blue-600 border-blue-600'
+              )}
+            >
+              <PackageCheck className="mr-2 h-4 w-4" /> Diambil
+            </Button>
+            <Button onClick={() => setIsPaymentDialogOpen(true)} disabled={amountDue <= 0}>
+              <DollarSign className="mr-2 h-4 w-4" /> Bayar
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Badge className={`${statusConfig[order.status]?.color || 'bg-gray-500'} mr-2`}>{order.status}</Badge>
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {Object.keys(statusConfig).map((status) => (
-                <DropdownMenuItem key={status} onSelect={() => updateOrderStatus(order.id, status as keyof typeof statusConfig)}>
-                  {status}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="outline" size="icon"><Printer className="h-4 w-4" /></Button>
-          <Button variant="destructive" size="icon" onClick={handleDelete}><Trash2 className="h-4 w-4" /></Button>
-          <Button onClick={() => setIsPaymentDialogOpen(true)} disabled={remainingBalance <= 0}>Bayar</Button>
-        </div>
-      </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Info Order</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Tanggal Order: {new Date(order.orderDate).toLocaleDateString("id-ID")}
-            </p>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Jenis Layanan</TableHead>
-                  <TableHead className="text-right">Berat (kg)</TableHead>
-                  <TableHead className="text-right">Harga/kg</TableHead>
-                  <TableHead className="text-right">Subtotal</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {order.items.map((item) => {
-                  const service = getService(item.serviceId);
-                  if (!service) return null;
-                  const subtotal = item.weight * service.price;
-                  return (
-                    <TableRow key={item.id}>
-                      <TableCell>{service.name}</TableCell>
-                      <TableCell className="text-right">{item.weight}</TableCell>
-                      <TableCell className="text-right">Rp {service.price.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">Rp {subtotal.toLocaleString()}</TableCell>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Info Order</CardTitle>
+              <CardDescription>Tanggal Order: {convertYYYYMMDDtoDDMMYYYY(order.orderDate)}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Jenis Layanan</TableHead>
+                    <TableHead className="text-center">Berat (kg)</TableHead>
+                    <TableHead className="text-right">Harga/kg</TableHead>
+                    <TableHead className="text-right">Subtotal</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {order.items.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{item.name}</TableCell>
+                      <TableCell className="text-center">{item.weight}</TableCell>
+                      <TableCell className="text-right">Rp {item.pricePerKg.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">Rp {item.subtotal.toLocaleString()}</TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-          <CardFooter className="flex flex-col items-end gap-2 pt-4">
-            <Separator className="mb-2" />
-            <div className="w-full max-w-xs space-y-2">
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Total</span>
-                <span>Rp {total.toLocaleString()}</span>
+                  ))}
+                </TableBody>
+              </Table>
+              <Separator className="my-4" />
+              <div className="flex justify-end text-right">
+                <div>
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">Total</span>
+                    <span>Rp {order.total.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">Sudah Dibayar</span>
+                    <span>Rp {order.amountPaid.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between gap-4 font-bold text-lg">
+                    <span>Sisa Tagihan</span>
+                    <span>Rp {(order.total - order.amountPaid).toLocaleString()}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Sudah Dibayar</span>
-                <span>Rp {amountPaid.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between gap-4 font-bold text-lg">
-                <span className="text-muted-foreground">Sisa Tagihan</span>
-                <span className={remainingBalance < 0 ? 'text-red-500' : ''}>
-                  Rp {remainingBalance.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </CardFooter>
-        </Card>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader><CardTitle>Info Pelanggan</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <div><strong>Nama:</strong> {order.customer.name}</div>
-              <div><strong>No. HP:</strong> {order.customer.phone}</div>
-              <div><strong>Alamat:</strong> {order.customer.address}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader><CardTitle>Riwayat Pembayaran</CardTitle></CardHeader>
-            <CardContent>
-              {order.payments.length > 0 ? (
+
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Info Pelanggan</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p><strong>Nama:</strong> {order.customer.name}</p>
+                <p><strong>No. HP:</strong> {order.customer.phone}</p>
+                <p><strong>Alamat:</strong> {order.customer.address}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Riwayat Pembayaran</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -151,28 +241,35 @@ const OrderDetail = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {order.payments.map((payment) => (
-                      <TableRow key={payment.id}>
-                        <TableCell>{new Date(payment.date).toLocaleDateString("id-ID")}</TableCell>
-                        <TableCell className="text-right">Rp {payment.amount.toLocaleString()}</TableCell>
+                    {order.paymentHistory.length > 0 ? (
+                      order.paymentHistory.map((payment, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{convertYYYYMMDDtoDDMMYYYY(payment.date)}</TableCell>
+                          <TableCell className="text-right">Rp {payment.amount.toLocaleString()}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={2} className="text-center text-muted-foreground">
+                          Belum ada pembayaran.
+                        </TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center">Belum ada pembayaran.</p>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
       <PaymentDialog
         open={isPaymentDialogOpen}
         onOpenChange={setIsPaymentDialogOpen}
         orderId={order.id}
-        remainingBalance={remainingBalance}
+        amountDue={amountDue}
+        onPaymentSuccess={handlePaymentSuccess}
       />
-    </div>
+    </>
   );
 };
 
