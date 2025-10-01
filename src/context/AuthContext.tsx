@@ -12,6 +12,7 @@ import {
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
+  loading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   updateUser: (userData: User) => void;
@@ -25,15 +26,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
-  const [useSupabase, setUseSupabase] = useState<boolean>(true); // Default to Supabase
+  const [loading, setLoading] = useState<boolean>(true);
+  const [useSupabase, setUseSupabase] = useState<boolean>(true);
 
   useEffect(() => {
-    const checkUser = async () => {
-      const currentUser = await supabaseService.getCurrentUser();
-      if (currentUser) {
-        let profile = await supabaseService.getProfile(currentUser.id);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        let profile = await supabaseService.getProfile(session.user.id);
         if (!profile) {
-          profile = await supabaseService.createProfileFromUser(currentUser);
+          profile = await supabaseService.createProfileFromUser(session.user);
         }
         
         if (profile) {
@@ -47,80 +48,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             profilePic: profile.avatar_url || undefined,
           });
           setIsAuthenticated(true);
-        }
-      }
-    };
-    checkUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Supabase auth state changed:', event);
-      if (event === 'SIGNED_IN' && session?.user) {
-        let profile = await supabaseService.getProfile(session.user.id);
-        if (!profile) {
-          console.log("Profile not found after sign-in, creating one...");
-          profile = await supabaseService.createProfileFromUser(session.user);
-        }
-
-        if (profile) {
-          setUser({
-            id: profile.user_id,
-            fullName: profile.full_name,
-            username: profile.username,
-            email: profile.email,
-            phone: profile.phone || undefined,
-            bio: profile.bio || undefined,
-            profilePic: profile.avatar_url || undefined,
-          });
-          setIsAuthenticated(true);
         } else {
-          console.error("Failed to get or create a profile for the user.");
+          setUser(null);
+          setIsAuthenticated(false);
         }
-      } else if (event === 'SIGNED_OUT') {
+      } else {
         setUser(null);
         setIsAuthenticated(false);
       }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const { success, error, user: supabaseUser } = await supabaseService.signIn(email, password);
-    
-    if (success && supabaseUser) {
-      // Manually set the user state immediately to avoid race conditions
-      let profile = await supabaseService.getProfile(supabaseUser.id);
-      if (!profile) {
-        profile = await supabaseService.createProfileFromUser(supabaseUser);
-      }
-      
-      if (profile) {
-        setUser({
-          id: profile.user_id,
-          fullName: profile.full_name,
-          username: profile.username,
-          email: profile.email,
-          phone: profile.phone || undefined,
-          bio: profile.bio || undefined,
-          profilePic: profile.avatar_url || undefined,
-        });
-        setIsAuthenticated(true);
-        return true;
-      }
-    }
-    
-    // If login fails for any reason, ensure state is cleared
-    console.error("Login failed:", error);
-    setUser(null);
-    setIsAuthenticated(false);
-    return false;
+    const { success } = await supabaseService.signIn(email, password);
+    return success;
   };
 
   const logout = async () => {
     await supabaseService.signOut();
-    setUser(null);
-    setIsAuthenticated(false);
-    // Force clear local storage to ensure a clean state for the next login
     localStorage.clear();
   };
 
@@ -154,12 +102,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         isAuthenticated,
         user,
+        loading,
         login,
         logout,
         updateUser,
         register,
         useSupabase,
-        setUseSupabase, // Keep for toggle if needed, but default is now Supabase
+        setUseSupabase,
       }}
     >
       {children}

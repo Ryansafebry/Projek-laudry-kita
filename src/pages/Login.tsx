@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +17,7 @@ import { Shirt } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     email: "",
@@ -25,6 +25,12 @@ const Login = () => {
     rememberMe: false
   });
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({
@@ -49,13 +55,7 @@ const Login = () => {
     try {
       const success = await login(formData.email, formData.password);
       
-      if (success) {
-        toast({
-          title: "Berhasil!",
-          description: "Login berhasil. Selamat datang!",
-        });
-        navigate("/dashboard");
-      } else {
+      if (!success) {
         toast({
           title: "Login Gagal",
           description: "Email atau password salah, atau email Anda belum diverifikasi.",
