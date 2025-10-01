@@ -89,7 +89,7 @@ export const supabaseService = {
   async getOrders(userId: string) {
     const { data, error } = await supabase
       .from("orders")
-      .select("*, order_items(*)")
+      .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
     if (error) {
