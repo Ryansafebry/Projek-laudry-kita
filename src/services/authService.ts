@@ -1,7 +1,7 @@
 import { User } from '../types';
 
 // Gunakan relative URL untuk memanfaatkan Vite proxy
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 export interface RegisterData {
   fullName: string;
@@ -192,7 +192,7 @@ class AuthService {
     try {
       console.log('🔄 AuthService: Mengirim request kirim ulang email verifikasi...');
       
-      const response = await fetch(`${API_BASE_URL}/api/auth/resend-verification`, {
+      const response = await fetch(`${API_BASE_URL}/api/send-verification-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

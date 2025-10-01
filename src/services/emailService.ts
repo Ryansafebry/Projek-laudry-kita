@@ -18,8 +18,8 @@ class EmailService {
   private fallbackCodes: Map<string, { code: string; expiresAt: Date; isUsed: boolean }> = new Map();
 
   constructor() {
-    // URL backend API
-    this.apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+    // URL backend API - Gunakan path relatif agar Vite proxy bekerja
+    this.apiBaseUrl = import.meta.env.VITE_API_URL || '';
   }
 
   // Generate 6-digit verification code
@@ -149,7 +149,7 @@ class EmailService {
   // Health check backend API
   async checkApiHealth(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/health`);
+      const response = await fetch(`${this.apiBaseUrl}/api/health`);
       const result: ApiResponse = await response.json();
       
       console.log('🏥 EmailService: Backend health check:', result.success ? 'OK' : 'FAIL');
