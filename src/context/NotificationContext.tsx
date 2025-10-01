@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { saveToStorage, loadFromStorage, STORAGE_KEYS } from '@/utils/localStorage';
+import { useAuth } from './AuthContext';
 
 export interface Notification {
   id: string;
@@ -30,6 +31,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   
   // Load notifications from localStorage or use default
   const [notifications, setNotifications] = useState<Notification[]>(() => {
@@ -48,6 +50,14 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.NOTIFICATIONS, notifications);
   }, [notifications]);
+
+  // Clear notifications on logout
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      saveToStorage(STORAGE_KEYS.NOTIFICATIONS, []);
+    }
+  }, [user]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 

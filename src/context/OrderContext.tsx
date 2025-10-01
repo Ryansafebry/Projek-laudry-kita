@@ -101,7 +101,12 @@ export const OrderProvider = ({ children }: { children: ReactNode }) => {
 
   // Effect to load data based on mode (Supabase vs LocalStorage)
   useEffect(() => {
-    if (useSupabase && user) {
+    if (!user) {
+      setOrders([]); // Clear orders on logout
+      return;
+    }
+
+    if (useSupabase) {
       fetchSupabaseOrders();
     } else {
       const savedOrders = loadFromStorage<Order[]>(STORAGE_KEYS.ORDERS, []);
