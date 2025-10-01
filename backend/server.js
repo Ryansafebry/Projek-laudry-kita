@@ -49,10 +49,31 @@ app.post('/api/auth/register', (req, res) => {
   // Cek duplikasi
   const existingUser = users.find(u => u.username === username || u.email === email);
   if (existingUser) {
-    return res.status(400).json({
-      success: false,
-      message: 'Username atau email sudah digunakan'
-    });
+    // Jika user ada tapi belum verifikasi, kirim ulang kode
+    if (!existingUser.isEmailVerified) {
+      console.log(`🤔 User ${email} exists but is not verified. Resending verification code.`);
+      const verificationCode = generateVerificationCode();
+      verificationCodes.set(email, {
+        code: verificationCode,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+        isUsed: false
+      });
+      
+      return res.json({
+        success: true,
+        message: 'Registrasi berhasil, silakan verifikasi email Anda.',
+        email: email,
+        data: {
+          code: verificationCode // Hanya untuk development
+        }
+      });
+    } else {
+      // Jika user ada dan sudah terverifikasi, ini adalah duplikat
+      return res.status(400).json({
+        success: false,
+        message: 'Username atau email sudah digunakan'
+      });
+    }
   }
   
   // Buat user baru
