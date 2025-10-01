@@ -90,7 +90,7 @@ const Login = () => {
         <CardContent>
           <form onSubmit={handleLogin} className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="email" className="text-black">Email</Label>
+              <Label htmlFor="email" className="text-slate-800">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -102,7 +102,7 @@ const Login = () => {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="password" className="text-black">Password</Label>
+              <Label htmlFor="password" className="text-slate-800">Password</Label>
               <Input 
                 id="password" 
                 type="password" 
@@ -122,7 +122,7 @@ const Login = () => {
               />
               <Label
                 htmlFor="remember-me"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-600"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700"
               >
                 Ingat saya
               </Label>

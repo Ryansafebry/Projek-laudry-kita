@@ -120,32 +120,32 @@ const Register = () => {
         <CardContent>
           <form onSubmit={handleRegister} className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="fullName">Nama Lengkap</Label>
+              <Label htmlFor="fullName" className="text-slate-800">Nama Lengkap</Label>
               <Input id="fullName" value={formData.fullName} onChange={(e) => handleInputChange('fullName', e.target.value)} required />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-slate-800">Email</Label>
               <Input id="email" type="email" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} required />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username" className="text-slate-800">Username</Label>
               <Input id="username" value={formData.username} onChange={(e) => handleInputChange('username', e.target.value)} required />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="phone">No. Telepon</Label>
+              <Label htmlFor="phone" className="text-slate-800">No. Telepon</Label>
               <Input id="phone" type="tel" value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value)} />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-slate-800">Password</Label>
               <Input id="password" type="password" value={formData.password} onChange={(e) => handleInputChange('password', e.target.value)} required />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
+              <Label htmlFor="confirmPassword" className="text-slate-800">Konfirmasi Password</Label>
               <Input id="confirmPassword" type="password" value={formData.confirmPassword} onChange={(e) => handleInputChange('confirmPassword', e.target.value)} required />
             </div>
             <div className="flex items-center space-x-2">
               <Checkbox id="agree-terms" checked={formData.agreeToTerms} onCheckedChange={(checked) => handleInputChange('agreeToTerms', checked as boolean)} />
-              <Label htmlFor="agree-terms" className="text-sm">Saya setuju dengan syarat dan ketentuan</Label>
+              <Label htmlFor="agree-terms" className="text-sm text-slate-700">Saya setuju dengan syarat dan ketentuan</Label>
             </div>
             <Button type="submit" disabled={isLoading} className="w-full bg-gradient-blue hover:bg-gradient-blue-dark">
               {isLoading ? "Mendaftarkan..." : "Daftar Akun"}
