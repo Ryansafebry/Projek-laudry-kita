@@ -142,6 +142,25 @@ export class SupabaseService {
     }
   }
 
+  async getOrderById(orderId: string, userId: string): Promise<OrderWithItems | null> {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*, order_items(*)')
+        .eq('id', orderId)
+        .eq('user_id', userId)
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      return data ? (data as OrderWithItems) : null
+    } catch (error) {
+      console.error('Get order by ID error:', error)
+      return null
+    }
+  }
+
   async createOrderWithItems(
     orderData: TablesInsert<'orders'>,
     itemsData: Omit<TablesInsert<'order_items'>, 'order_id' | 'user_id'>[]
