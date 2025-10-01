@@ -3,11 +3,11 @@ import { useParams, Link } from 'react-router-dom';
 import { supabaseService } from '@/services/supabaseService';
 import { useAuth } from '@/context/AuthContext';
 import { Tables } from '@/lib/supabase';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Printer, Share2 } from 'lucide-react';
+import { ArrowLeft, Printer, Share2, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,6 +19,7 @@ const OrderDetail = () => {
   const { user } = useAuth();
   const [order, setOrder] = useState<OrderWithItems | null>(null);
   const [loading, setLoading] = useState(true);
+  const [processingPayment, setProcessingPayment] = useState(false);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -45,6 +46,25 @@ const OrderDetail = () => {
       case 'diambil': return 'success';
       default: return 'destructive';
     }
+  };
+
+  const handlePayment = async () => {
+    if (!order || !user || remainingBill <= 0) return;
+
+    setProcessingPayment(true);
+    const paymentAmount = remainingBill;
+
+    const { success, error } = await supabaseService.processFullPayment(order.id, user.id, paymentAmount);
+
+    if (success) {
+      setOrder(prevOrder => prevOrder ? { ...prevOrder, amount_paid: prevOrder.total_price } : null);
+      alert("Pembayaran berhasil!");
+    } else {
+      console.error("Payment failed:", error);
+      alert("Pembayaran gagal. Silakan coba lagi.");
+    }
+
+    setProcessingPayment(false);
   };
 
   if (loading) {
@@ -137,6 +157,16 @@ const OrderDetail = () => {
             </>
           )}
         </CardContent>
+        {!isPaid && (
+          <CardFooter>
+            <Button onClick={handlePayment} disabled={processingPayment} className="w-full">
+              {processingPayment ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Bayar Lunas (Rp {remainingBill.toLocaleString()})
+            </Button>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );
