@@ -1,135 +1,205 @@
-import { useState, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { DateRangePicker } from "@/components/DateRangePicker";
-import { useOrders, calculateAmountPaid } from "@/context/OrderContext";
-import { convertYYYYMMDDtoDDMMYYYY, parseDDMMYYYY } from "@/utils/dateUtils";
-import { exportToExcel, exportToPDF } from "@/utils/exportUtils";
-import { FileDown, Calendar as CalendarIcon } from "lucide-react";
+import { useState } from "react";
+import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
+import { Calendar as CalendarIcon, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { useOrders } from "@/context/OrderContext";
+import { useToast } from "@/hooks/use-toast";
+import { exportToPDF, exportToExcel, getExportFilename } from "@/utils/exportUtils";
+import { parseDDMMYYYY, convertYYYYMMDDtoDDMMYYYY } from "@/utils/dateFormat";
 
 const Reports = () => {
   const { orders } = useOrders();
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const { toast } = useToast();
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    to: new Date(),
+  });
 
-  const filteredOrders = useMemo(() => {
-    if (!dateRange?.from) {
-      return orders;
-    }
-    return orders.filter(order => {
-      let orderDate: Date;
-      try {
-        // Tanggal dari context sudah dalam format ISO string, bisa langsung di-parse
-        orderDate = new Date(order.orderDate);
-        if (isNaN(orderDate.getTime())) {
-          console.warn(`Format tanggal tidak valid untuk order ${order.id}: ${order.orderDate}`);
-          return false;
-        }
-      } catch (e) {
-        console.error(`Error saat mem-parsing tanggal untuk order ${order.id}: ${order.orderDate}`, e);
+  const filteredOrders = orders.filter(order => {
+    if (!date?.from) return true;
+
+    let orderDate: Date;
+    try {
+      // Menggunakan parser DD/MM/YYYY yang sudah dibuat
+      orderDate = parseDDMMYYYY(order.orderDate);
+      if (isNaN(orderDate.getTime())) {
+        console.warn(`Format tanggal tidak valid untuk order ${order.id}: ${order.orderDate}`);
         return false;
       }
-      
-      const from = dateRange.from;
-      const to = dateRange.to || from;
+    } catch (e) {
+      console.error(`Error saat mem-parsing tanggal untuk order ${order.id}: ${order.orderDate}`, e);
+      return false;
+    }
 
-      // Set ke awal hari untuk 'from' dan akhir hari untuk 'to'
-      from.setHours(0, 0, 0, 0);
-      to.setHours(23, 59, 59, 999);
+    // Mengatur tanggal 'dari' ke awal hari
+    const fromDate = new Date(date.from);
+    fromDate.setHours(0, 0, 0, 0);
 
-      return orderDate >= from && orderDate <= to;
-    });
-  }, [orders, dateRange]);
+    // Mengatur tanggal 'sampai' ke akhir hari
+    const toDate = date.to ? new Date(date.to) : new Date(date.from);
+    toDate.setHours(23, 59, 59, 999);
 
-  const totalPendapatan = filteredOrders.reduce((sum, order) => sum + calculateAmountPaid(order), 0);
-  const totalOrder = filteredOrders.length;
-  const orderLunas = filteredOrders.filter(o => o.status === 'Lunas').length;
+    return orderDate >= fromDate && orderDate <= toDate;
+  });
+
+  const totalPendapatan = filteredOrders.reduce((sum, order) => sum + order.amountPaid, 0);
+
+  const handleExport = (format: 'Excel' | 'PDF') => {
+    if (filteredOrders.length === 0) {
+      toast({
+        title: "Tidak Ada Data",
+        description: "Tidak ada transaksi untuk diekspor pada rentang tanggal ini.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const filename = getExportFilename();
+    
+    try {
+      if (format === 'PDF') {
+        exportToPDF(filteredOrders, filename);
+        toast({
+          title: "Export PDF Berhasil",
+          description: `Laporan PDF telah dibuat. Silakan simpan atau cetak dokumen.`,
+        });
+      } else if (format === 'Excel') {
+        exportToExcel(filteredOrders, filename);
+        toast({
+          title: "Export Excel Berhasil",
+          description: `File ${filename}.xls telah diunduh.`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Export Gagal",
+        description: `Terjadi kesalahan saat mengekspor laporan ${format}.`,
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Laporan</h1>
-          <p className="text-muted-foreground">Analisis performa laundry Anda.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <DateRangePicker onUpdate={(range) => setDateRange(range.range)} />
-          <Button onClick={() => exportToExcel(filteredOrders, 'laporan_order')}>
-            <FileDown className="mr-2 h-4 w-4" />
-            Export Excel
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                id="date"
+                variant={"outline"}
+                className={cn(
+                  "w-full sm:w-[300px] justify-start text-left font-normal",
+                  !date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date?.from ? (
+                  date.to ? (
+                    <>
+                      {format(date.from, "LLL dd, y")} -{" "}
+                      {format(date.to, "LLL dd, y")}
+                    </>
+                  ) : (
+                    format(date.from, "LLL dd, y")
+                  )
+                ) : (
+                  <span>Pilih rentang tanggal</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={setDate}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+          <Button variant="outline" size="sm" onClick={() => handleExport('PDF')}>
+            <Download className="mr-2 h-4 w-4" /> Export PDF
           </Button>
-          <Button onClick={() => exportToPDF(filteredOrders, 'laporan_order')}>
-            <FileDown className="mr-2 h-4 w-4" />
-            Export PDF
+          <Button variant="outline" size="sm" onClick={() => handleExport('Excel')}>
+            <Download className="mr-2 h-4 w-4" /> Export Excel
           </Button>
         </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Pendapatan</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">Rp {totalPendapatan.toLocaleString()}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Order</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{totalOrder}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Order Lunas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{orderLunas}</p>
-          </CardContent>
-        </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Detail Laporan</CardTitle>
-          <CardDescription>
-            Rincian order berdasarkan rentang tanggal yang dipilih.
-          </CardDescription>
+          <CardTitle>Total Pendapatan</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-4xl font-bold">Rp {totalPendapatan.toLocaleString()}</div>
+          <p className="text-xs text-muted-foreground">
+            Total pendapatan dari {filteredOrders.length} transaksi dalam rentang tanggal yang dipilih.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Daftar Transaksi</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>No.</TableHead>
+                <TableHead className="w-[50px]">No</TableHead>
                 <TableHead>Tanggal</TableHead>
                 <TableHead>Pelanggan</TableHead>
                 <TableHead className="text-right">Total</TableHead>
-                <TableHead>Status Pembayaran</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredOrders.map((order, index) => {
-                const amountPaid = calculateAmountPaid(order);
-                const isPaid = amountPaid >= order.total;
-                return (
+              {filteredOrders.length > 0 ? (
+                filteredOrders.map((order, index) => (
                   <TableRow key={order.id}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>{convertYYYYMMDDtoDDMMYYYY(order.orderDate)}</TableCell>
                     <TableCell>{order.customer.name}</TableCell>
                     <TableCell className="text-right">Rp {order.total.toLocaleString()}</TableCell>
                     <TableCell>
-                      <Badge variant={isPaid ? "success" : "destructive"}>
-                        {isPaid ? "Lunas" : "Belum Lunas"}
+                      <Badge variant={order.amountPaid >= order.total ? "default" : "destructive"}>
+                        {order.amountPaid >= order.total ? "Lunas" : "Belum Lunas"}
                       </Badge>
                     </TableCell>
                   </TableRow>
-                );
-              })}
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center">
+                    Tidak ada transaksi pada rentang tanggal ini.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
