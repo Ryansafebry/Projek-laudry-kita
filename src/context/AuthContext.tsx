@@ -33,7 +33,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     setLoading(true);
 
-    // Single function to update user state based on a Supabase user object
     const updateUserState = async (sessionUser: SupabaseUser | null) => {
       if (!sessionUser) {
         setUser(null);
@@ -41,10 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      // User is authenticated with Supabase, now get our application profile
       let profile = await supabaseService.getProfile(sessionUser.id);
-
-      // Fallback: If profile doesn't exist (e.g., due to DB trigger delay), try creating it.
       if (!profile) {
         console.warn(`Profile not found for user ${sessionUser.id}. Attempting to create a fallback profile.`);
         profile = await supabaseService.createProfileFromUser(sessionUser);
@@ -63,25 +59,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(true);
       } else {
         console.error(`CRITICAL: Failed to get or create a profile for authenticated user ${sessionUser.id}.`);
-        // If we still can't get a profile, it's safer to sign out.
         await supabase.auth.signOut();
         setUser(null);
         setIsAuthenticated(false);
       }
     };
 
-    // 1. Check for an existing session when the app loads
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      updateUserState(session?.user ?? null).finally(() => {
-        setLoading(false);
-      });
-    });
-
-    // 2. Listen for future auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         await updateUserState(session?.user ?? null);
-        // The initial loading is already handled, no need to set it here.
+        // The 'INITIAL_SESSION' event is crucial. It fires once when the listener is set up.
+        // After it has fired, we know the initial auth state is determined, and we can stop loading.
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
+          setLoading(false);
+        }
       }
     );
 
@@ -91,15 +82,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
+    setLoading(true);
     const { success } = await supabaseService.signIn(email, password);
-    // onAuthStateChange will handle setting the user state
+    // onAuthStateChange will handle setting the user state and setLoading(false) after SIGNED_IN
+    if (!success) {
+      setLoading(false); // Ensure loading stops on failed login attempt
+    }
     return success;
   };
 
   const logout = async () => {
     await supabaseService.signOut();
-    // onAuthStateChange will handle clearing the user state
-    localStorage.clear(); // Force clear for good measure
+    localStorage.clear();
   };
 
   const register = async (userData: Omit<User, "id"> & { password: string }): Promise<{ success: boolean; email?: string }> => {
@@ -117,7 +111,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateUser = async (updatedUserData: User) => {
-    setUser(updatedUserData); // Optimistic update
+    setUser(updatedUserData);
     await supabaseService.updateProfile(updatedUserData.id, {
       full_name: updatedUserData.fullName,
       username: updatedUserData.username,
