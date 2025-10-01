@@ -94,9 +94,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
-    // We only need to tell Supabase to sign out.
-    // The onAuthStateChange listener will handle updating the state.
     await supabaseService.signOut();
+    setUser(null);
+    setIsAuthenticated(false);
   };
 
   const register = async (userData: Omit<User, "id"> & { password: string }): Promise<{ success: boolean; email?: string }> => {
