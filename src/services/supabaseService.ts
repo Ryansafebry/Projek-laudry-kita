@@ -1,4 +1,5 @@
 import { supabase, Tables, TablesInsert, TablesUpdate } from '@/lib/supabase'
+import { User as SupabaseUser } from '@supabase/supabase-js'
 
 type OrderWithItems = Tables<'orders'> & { order_items: Tables<'order_items'>[] }
 type PaymentWithOrder = Tables<'payments'> & { orders: Pick<Tables<'orders'>, 'customer_name' | 'total_price'> | null }
@@ -71,11 +72,39 @@ export class SupabaseService {
         .eq('user_id', userId)
         .single()
 
-      if (error) throw error
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+        throw error;
+      }
       return data
     } catch (error) {
       console.error('Get profile error:', error)
       return null
+    }
+  }
+
+  async createProfileFromUser(user: SupabaseUser): Promise<Tables<'profiles'> | null> {
+    try {
+      console.log("Creating profile for user:", user.id);
+      const profileData: TablesInsert<'profiles'> = {
+        id: user.id,
+        user_id: user.id,
+        full_name: user.user_metadata.full_name || 'New User',
+        username: user.user_metadata.username || user.email?.split('@')[0] || `user${user.id.substring(0, 5)}`,
+        email: user.email!,
+        phone: user.user_metadata.phone || null,
+      };
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert(profileData)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Create profile from user error:', error);
+      return null;
     }
   }
 

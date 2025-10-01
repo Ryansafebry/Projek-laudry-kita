@@ -348,8 +348,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const result = await supabaseService.signIn(email, password);
       
       if (result.success && result.user) {
-        // Get user profile
-        const profile = await supabaseService.getProfile(result.user.id);
+        let profile = await supabaseService.getProfile(result.user.id);
+
+        // Jika profil tidak ada, buat secara otomatis
+        if (!profile) {
+          console.warn("Profil tidak ditemukan untuk pengguna terverifikasi. Membuat profil sekarang...");
+          profile = await supabaseService.createProfileFromUser(result.user);
+        }
         
         if (profile) {
           const userData: User = {
@@ -364,6 +369,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(userData);
           console.log('✅ AuthContext: Supabase login berhasil!');
           return true;
+        } else {
+          console.error("Gagal mendapatkan atau membuat profil untuk pengguna.");
         }
       }
       
@@ -405,7 +412,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('🔄 Supabase auth state changed:', event);
         
         if (event === 'SIGNED_IN' && session?.user) {
-          const profile = await supabaseService.getProfile(session.user.id);
+          let profile = await supabaseService.getProfile(session.user.id);
+          if (!profile) {
+            profile = await supabaseService.createProfileFromUser(session.user);
+          }
+
           if (profile) {
             const userData: User = {
               id: session.user.id,
