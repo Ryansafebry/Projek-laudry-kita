@@ -1,6 +1,8 @@
 import { User } from "../types";
 import { emailService } from "../services/emailService";
 import authService, { RegisterData, LoginData } from "../services/authService";
+import { supabaseService } from "../services/supabaseService";
+import { supabase } from "../lib/supabase";
 import {
   createContext,
   useState,
@@ -23,6 +25,11 @@ interface AuthContextType {
   bypassEmailVerification: (email: string) => Promise<boolean>;
   clearAllUsers: () => void;
   getAllUsers: () => UserWithPassword[];
+  // Supabase methods
+  useSupabase: boolean;
+  setUseSupabase: (use: boolean) => void;
+  supabaseLogin: (email: string, password: string) => Promise<boolean>;
+  supabaseRegister: (userData: Omit<User, "id"> & { password: string }) => Promise<{ success: boolean; email?: string }>;
 }
 
 // Buat konteks dengan nilai default
@@ -36,6 +43,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(() => {
     const storedUser = localStorage.getItem("user");
     return storedUser ? JSON.parse(storedUser) : null;
+  });
+  
+  const [useSupabase, setUseSupabase] = useState<boolean>(() => {
+    return localStorage.getItem("useSupabase") === "true";
   });
 
   useEffect(() => {
@@ -301,6 +312,98 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log('👥 AuthContext: Semua users:', users);
     return users;
   };
+
+  // Supabase methods
+  const supabaseLogin = async (email: string, password: string): Promise<boolean> => {
+    console.log('🔍 AuthContext: Supabase login untuk:', email);
+    
+    try {
+      const result = await supabaseService.signIn(email, password);
+      
+      if (result.success && result.user) {
+        // Get user profile
+        const profile = await supabaseService.getProfile(result.user.id);
+        
+        if (profile) {
+          const userData: User = {
+            id: result.user.id,
+            fullName: profile.full_name,
+            username: profile.username,
+            email: profile.email,
+            phone: profile.phone || undefined
+          };
+          
+          setIsAuthenticated(true);
+          setUser(userData);
+          console.log('✅ AuthContext: Supabase login berhasil!');
+          return true;
+        }
+      }
+      
+      console.log('❌ AuthContext: Supabase login gagal:', result.error);
+      return false;
+    } catch (error) {
+      console.error('💥 AuthContext: Error saat Supabase login:', error);
+      return false;
+    }
+  };
+
+  const supabaseRegister = async (userData: Omit<User, "id"> & { password: string }): Promise<{ success: boolean; email?: string }> => {
+    console.log('🔍 AuthContext: Supabase register untuk:', userData.email);
+    
+    try {
+      const result = await supabaseService.signUp(userData.email, userData.password, {
+        fullName: userData.fullName,
+        username: userData.username,
+        phone: userData.phone
+      });
+      
+      if (result.success) {
+        console.log('✅ AuthContext: Supabase register berhasil!');
+        return { success: true, email: userData.email };
+      }
+      
+      console.log('❌ AuthContext: Supabase register gagal:', result.error);
+      return { success: false };
+    } catch (error) {
+      console.error('💥 AuthContext: Error saat Supabase register:', error);
+      return { success: false };
+    }
+  };
+
+  // Listen to Supabase auth changes
+  useEffect(() => {
+    if (useSupabase) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('🔄 Supabase auth state changed:', event);
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+          const profile = await supabaseService.getProfile(session.user.id);
+          if (profile) {
+            const userData: User = {
+              id: session.user.id,
+              fullName: profile.full_name,
+              username: profile.username,
+              email: profile.email,
+              phone: profile.phone || undefined
+            };
+            setUser(userData);
+            setIsAuthenticated(true);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      });
+
+      return () => subscription.unsubscribe();
+    }
+  }, [useSupabase]);
+
+  // Save useSupabase preference
+  useEffect(() => {
+    localStorage.setItem("useSupabase", useSupabase.toString());
+  }, [useSupabase]);
   return (
     <AuthContext.Provider
       value={{ 
@@ -314,7 +417,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         resendVerificationEmail, 
         bypassEmailVerification,
         clearAllUsers,
-        getAllUsers
+        getAllUsers,
+        // Supabase methods
+        useSupabase,
+        setUseSupabase,
+        supabaseLogin,
+        supabaseRegister
       }}
     >
       {children}
