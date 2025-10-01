@@ -11,8 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 
 const Register = () => {
   const navigate = useNavigate();
-  const { register, useSupabase } = useAuth();
+  const { register } = useAuth();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -70,6 +71,7 @@ const Register = () => {
       return;
     }
 
+    setIsLoading(true);
     try {
       const result = await register({
         fullName: formData.fullName,
@@ -79,28 +81,19 @@ const Register = () => {
         phone: formData.phone
       });
 
-      if (result.success) {
+      if (result.success && result.email) {
         toast({
-          title: "Berhasil!",
-          description: useSupabase
-            ? "Akun berhasil dibuat. Cek email Anda untuk verifikasi."
-            : "Akun berhasil dibuat. Email verifikasi telah dikirim ke " + result.email,
+          title: "Registrasi Berhasil!",
+          description: "Kode verifikasi telah dikirim (disimulasikan). Silakan cek konsol.",
         });
+        
+        // Arahkan ke halaman verifikasi dengan email sebagai parameter
+        navigate(`/verify-email?email=${encodeURIComponent(result.email)}`);
 
-        // Redirect ke halaman verifikasi email atau login
-        if (useSupabase) {
-          setTimeout(() => {
-            navigate("/");
-          }, 2000);
-        } else {
-          setTimeout(() => {
-            navigate(`/verify-email?email=${encodeURIComponent(result.email || formData.email)}`);
-          }, 2000);
-        }
       } else {
         toast({
           title: "Registrasi Gagal",
-          description: "Username atau email sudah digunakan. Silakan gunakan yang lain.",
+          description: "Username atau email mungkin sudah digunakan. Silakan gunakan yang lain.",
           variant: "destructive"
         });
       }
@@ -110,6 +103,8 @@ const Register = () => {
         description: "Terjadi kesalahan saat mendaftar. Silakan coba lagi.",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -221,8 +216,8 @@ const Register = () => {
               </Label>
             </div>
 
-            <Button type="submit" className="w-full bg-gradient-blue hover:bg-gradient-blue-dark shadow-lg hover:shadow-xl transition-all duration-200">
-              Daftar Akun
+            <Button type="submit" disabled={isLoading} className="w-full bg-gradient-blue hover:bg-gradient-blue-dark shadow-lg hover:shadow-xl transition-all duration-200">
+              {isLoading ? "Mendaftarkan..." : "Daftar Akun"}
             </Button>
 
             <div className="text-center text-sm text-slate-600">

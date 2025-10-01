@@ -10,9 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Shirt, Mail, CheckCircle, XCircle, RefreshCw } from "lucide-react";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
+import { Mail, CheckCircle, RefreshCw } from "lucide-react";
 
 const EmailVerification = () => {
   const navigate = useNavigate();
@@ -20,7 +23,7 @@ const EmailVerification = () => {
   const { verifyEmail, resendVerificationEmail } = useAuth();
   const { toast } = useToast();
   
-  const [verificationCode, setVerificationCode] = useState("");
+  const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
@@ -28,56 +31,26 @@ const EmailVerification = () => {
 
   useEffect(() => {
     const emailParam = searchParams.get("email");
-    const codeParam = searchParams.get("code");
-    
     if (emailParam) {
       setEmail(emailParam);
-    }
-    
-    // Auto-verify jika ada code di URL
-    if (codeParam && emailParam) {
-      handleAutoVerify(emailParam, codeParam);
-    }
-  }, [searchParams]);
-
-  const handleAutoVerify = async (email: string, code: string) => {
-    setIsLoading(true);
-    try {
-      const success = await verifyEmail(email, code);
-      if (success) {
-        setIsVerified(true);
-        toast({
-          title: "Berhasil!",
-          description: "Email berhasil diverifikasi. Anda akan diarahkan ke halaman login.",
-        });
-        setTimeout(() => {
-          navigate("/");
-        }, 3000);
-      } else {
-        toast({
-          title: "Verifikasi Gagal",
-          description: "Kode verifikasi tidak valid atau sudah kedaluwarsa.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
+    } else {
+      // Jika tidak ada email, arahkan kembali ke registrasi
       toast({
         title: "Error",
-        description: "Terjadi kesalahan saat verifikasi email.",
+        description: "Email tidak ditemukan. Silakan daftar terlebih dahulu.",
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
+      navigate("/register");
     }
-  };
+  }, [searchParams, navigate, toast]);
 
-  const handleManualVerify = async (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!verificationCode || !email) {
+    if (otp.length !== 6) {
       toast({
         title: "Error",
-        description: "Kode verifikasi dan email harus diisi",
+        description: "Kode OTP harus 6 digit.",
         variant: "destructive"
       });
       return;
@@ -85,7 +58,7 @@ const EmailVerification = () => {
 
     setIsLoading(true);
     try {
-      const success = await verifyEmail(email, verificationCode);
+      const success = await verifyEmail(email, otp);
       if (success) {
         setIsVerified(true);
         toast({
@@ -101,6 +74,7 @@ const EmailVerification = () => {
           description: "Kode verifikasi tidak valid atau sudah kedaluwarsa.",
           variant: "destructive"
         });
+        setOtp("");
       }
     } catch (error) {
       toast({
@@ -114,14 +88,7 @@ const EmailVerification = () => {
   };
 
   const handleResendEmail = async () => {
-    if (!email) {
-      toast({
-        title: "Error",
-        description: "Email tidak ditemukan. Silakan daftar ulang.",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (!email) return;
 
     setIsResending(true);
     try {
@@ -129,7 +96,7 @@ const EmailVerification = () => {
       if (success) {
         toast({
           title: "Berhasil!",
-          description: "Email verifikasi telah dikirim ulang. Silakan cek inbox Anda.",
+          description: "Email verifikasi telah dikirim ulang. Silakan cek inbox (atau konsol).",
         });
       } else {
         toast({
@@ -191,49 +158,35 @@ const EmailVerification = () => {
             <CardTitle className="text-3xl text-gradient-blue font-bold">Verifikasi Email</CardTitle>
           </div>
           <CardDescription className="text-teal-600">
-            Masukkan kode verifikasi yang telah dikirim ke email Anda
+            Kami telah mengirimkan kode 6 digit ke <strong>{email}</strong>. Silakan masukkan kode di bawah.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleManualVerify} className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email" className="text-black">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Masukan email Anda"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="border-teal-200 focus:border-teal-500 focus:ring-teal-500/20"
-              />
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="verificationCode" className="text-black">Kode Verifikasi</Label>
-              <Input
-                id="verificationCode"
-                type="text"
-                placeholder="Masukan kode 6 digit"
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value)}
-                maxLength={6}
-                required
-                className="border-teal-200 focus:border-teal-500 focus:ring-teal-500/20 text-center text-lg tracking-widest"
-              />
+          <form onSubmit={handleVerify} className="grid gap-6">
+            <div className="grid gap-2 text-center">
+              <InputOTP maxLength={6} value={otp} onChange={(value) => setOtp(value)}>
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
             </div>
 
             <Button 
               type="submit" 
-              disabled={isLoading}
+              disabled={isLoading || otp.length < 6}
               className="w-full bg-gradient-blue hover:bg-gradient-blue-dark shadow-lg hover:shadow-xl transition-all duration-200"
             >
-              {isLoading ? "Memverifikasi..." : "Verifikasi Email"}
+              {isLoading ? "Memverifikasi..." : "Verifikasi Akun"}
             </Button>
 
             <div className="text-center space-y-2">
               <p className="text-sm text-slate-600">
-                Tidak menerima email?
+                Tidak menerima kode?
               </p>
               <Button
                 type="button"
@@ -248,15 +201,15 @@ const EmailVerification = () => {
                     Mengirim ulang...
                   </>
                 ) : (
-                  "Kirim ulang kode verifikasi"
+                  "Kirim ulang kode"
                 )}
               </Button>
             </div>
 
             <div className="text-center text-sm text-slate-600">
-              Kembali ke{" "}
-              <Link to="/" className="text-teal-600 hover:text-teal-700 font-medium">
-                halaman login
+              Salah email? Kembali ke{" "}
+              <Link to="/register" className="text-teal-600 hover:text-teal-700 font-medium">
+                halaman registrasi
               </Link>
             </div>
           </form>
