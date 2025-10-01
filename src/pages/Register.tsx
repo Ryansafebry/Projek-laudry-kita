@@ -14,6 +14,7 @@ const Register = () => {
   const { register } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -34,40 +35,16 @@ const Register = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validasi form
-    if (!formData.fullName || !formData.email || !formData.username || !formData.password) {
-      toast({
-        title: "Error",
-        description: "Semua field wajib diisi",
-        variant: "destructive"
-      });
-      return;
-    }
-
     if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Error", 
-        description: "Password dan konfirmasi password tidak cocok",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "Password tidak cocok", variant: "destructive" });
       return;
     }
-
     if (formData.password.length < 6) {
-      toast({
-        title: "Error",
-        description: "Password minimal 6 karakter",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "Password minimal 6 karakter", variant: "destructive" });
       return;
     }
-
     if (!formData.agreeToTerms) {
-      toast({
-        title: "Error",
-        description: "Anda harus menyetujui syarat dan ketentuan",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "Anda harus menyetujui syarat dan ketentuan", variant: "destructive" });
       return;
     }
 
@@ -81,32 +58,50 @@ const Register = () => {
         phone: formData.phone
       });
 
-      if (result.success && result.email) {
+      if (result.success) {
         toast({
           title: "Registrasi Berhasil!",
-          description: "Kode verifikasi telah dikirim (disimulasikan). Silakan cek konsol.",
+          description: "Silakan cek email Anda untuk link verifikasi.",
         });
-        
-        // Arahkan ke halaman verifikasi dengan email sebagai parameter
-        navigate(`/verify-email?email=${encodeURIComponent(result.email)}`);
-
+        setIsSubmitted(true);
       } else {
         toast({
           title: "Registrasi Gagal",
-          description: "Username atau email mungkin sudah digunakan. Silakan gunakan yang lain.",
+          description: "Email atau username mungkin sudah terdaftar.",
           variant: "destructive"
         });
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Terjadi kesalahan saat mendaftar. Silakan coba lagi.",
+        description: "Terjadi kesalahan saat mendaftar.",
         variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (isSubmitted) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/30 to-slate-100 p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <CardTitle>Verifikasi Email Anda</CardTitle>
+            <CardDescription>
+              Kami telah mengirimkan link verifikasi ke <strong>{formData.email}</strong>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p>Silakan klik link di email tersebut untuk mengaktifkan akun Anda. Jika tidak ada, periksa folder spam.</p>
+            <Button asChild className="mt-4">
+              <Link to="/">Kembali ke Login</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/30 to-slate-100 p-4">
@@ -125,113 +120,42 @@ const Register = () => {
         <CardContent>
           <form onSubmit={handleRegister} className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="fullName" className="text-black">Nama Lengkap</Label>
-              <Input
-                id="fullName"
-                type="text"
-                placeholder="Masukan nama lengkap"
-                value={formData.fullName}
-                onChange={(e) => handleInputChange('fullName', e.target.value)}
-                required
-                className="border-teal-200 focus:border-teal-500 focus:ring-teal-500/20"
-              />
+              <Label htmlFor="fullName">Nama Lengkap</Label>
+              <Input id="fullName" value={formData.fullName} onChange={(e) => handleInputChange('fullName', e.target.value)} required />
             </div>
-
             <div className="grid gap-2">
-              <Label htmlFor="email" className="text-black">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Masukan email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                required
-                className="border-teal-200 focus:border-teal-500 focus:ring-teal-500/20"
-              />
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} required />
             </div>
-
             <div className="grid gap-2">
-              <Label htmlFor="phone" className="text-black">No. Telepon</Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="Masukan nomor telepon"
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-                className="border-teal-200 focus:border-teal-500 focus:ring-teal-500/20"
-              />
+              <Label htmlFor="username">Username</Label>
+              <Input id="username" value={formData.username} onChange={(e) => handleInputChange('username', e.target.value)} required />
             </div>
-
             <div className="grid gap-2">
-              <Label htmlFor="username" className="text-black">Username</Label>
-              <Input
-                id="username"
-                type="text"
-                placeholder="Masukan username"
-                value={formData.username}
-                onChange={(e) => handleInputChange('username', e.target.value)}
-                required
-                className="border-teal-200 focus:border-teal-500 focus:ring-teal-500/20"
-              />
+              <Label htmlFor="phone">No. Telepon</Label>
+              <Input id="phone" type="tel" value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value)} />
             </div>
-
             <div className="grid gap-2">
-              <Label htmlFor="password" className="text-black">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                placeholder="Masukan password (min. 6 karakter)" 
-                value={formData.password}
-                onChange={(e) => handleInputChange('password', e.target.value)}
-                required 
-                className="border-teal-200 focus:border-teal-500 focus:ring-teal-500/20"
-              />
+              <Label htmlFor="password">Password</Label>
+              <Input id="password" type="password" value={formData.password} onChange={(e) => handleInputChange('password', e.target.value)} required />
             </div>
-
             <div className="grid gap-2">
-              <Label htmlFor="confirmPassword" className="text-black">Konfirmasi Password</Label>
-              <Input 
-                id="confirmPassword" 
-                type="password" 
-                placeholder="Ulangi password" 
-                value={formData.confirmPassword}
-                onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                required 
-                className="border-teal-200 focus:border-teal-500 focus:ring-teal-500/20"
-              />
+              <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
+              <Input id="confirmPassword" type="password" value={formData.confirmPassword} onChange={(e) => handleInputChange('confirmPassword', e.target.value)} required />
             </div>
-
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="agree-terms" 
-                checked={formData.agreeToTerms}
-                onCheckedChange={(checked) => handleInputChange('agreeToTerms', checked as boolean)}
-                className="border-teal-300 data-[state=checked]:bg-teal-500" 
-              />
-              <Label
-                htmlFor="agree-terms"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-600"
-              >
-                Saya setuju dengan syarat dan ketentuan
-              </Label>
+              <Checkbox id="agree-terms" checked={formData.agreeToTerms} onCheckedChange={(checked) => handleInputChange('agreeToTerms', checked as boolean)} />
+              <Label htmlFor="agree-terms" className="text-sm">Saya setuju dengan syarat dan ketentuan</Label>
             </div>
-
-            <Button type="submit" disabled={isLoading} className="w-full bg-gradient-blue hover:bg-gradient-blue-dark shadow-lg hover:shadow-xl transition-all duration-200">
+            <Button type="submit" disabled={isLoading} className="w-full bg-gradient-blue hover:bg-gradient-blue-dark">
               {isLoading ? "Mendaftarkan..." : "Daftar Akun"}
             </Button>
-
-            <div className="text-center text-sm text-slate-600">
-              Sudah punya akun?{" "}
-              <Link to="/" className="text-teal-600 hover:text-teal-700 font-medium">
-                Login di sini
-              </Link>
+            <div className="text-center text-sm">
+              Sudah punya akun? <Link to="/" className="text-teal-600 hover:underline">Login</Link>
             </div>
           </form>
         </CardContent>
       </Card>
-      <footer className="mt-8 text-center text-sm text-teal-600/70">
-        © Laundry Kita 2025
-      </footer>
     </div>
   );
 };

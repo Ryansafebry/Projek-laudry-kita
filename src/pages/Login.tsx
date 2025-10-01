@@ -14,14 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Shirt } from "lucide-react";
-import SupabaseToggle from "@/components/SupabaseToggle";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, useSupabase } = useAuth();
+  const { login } = useAuth();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
-    emailOrUsername: "",
+    email: "",
     password: "",
     rememberMe: false
   });
@@ -37,10 +36,10 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.emailOrUsername || !formData.password) {
+    if (!formData.email || !formData.password) {
       toast({
         title: "Error",
-        description: "Email/Username dan password harus diisi",
+        description: "Email dan password harus diisi",
         variant: "destructive"
       });
       return;
@@ -48,7 +47,7 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      const success = await login(formData.emailOrUsername, formData.password);
+      const success = await login(formData.email, formData.password);
       
       if (success) {
         toast({
@@ -59,9 +58,7 @@ const Login = () => {
       } else {
         toast({
           title: "Login Gagal",
-          description: useSupabase 
-            ? "Email atau password salah. Silakan cek kembali."
-            : "Username atau password salah, atau email belum diverifikasi.",
+          description: "Email atau password salah, atau email Anda belum diverifikasi.",
           variant: "destructive"
         });
       }
@@ -93,13 +90,13 @@ const Login = () => {
         <CardContent>
           <form onSubmit={handleLogin} className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="emailOrUsername" className="text-black">Email atau Username</Label>
+              <Label htmlFor="email" className="text-black">Email</Label>
               <Input
-                id="emailOrUsername"
-                type="text"
-                placeholder="Masukan email atau username"
-                value={formData.emailOrUsername}
-                onChange={(e) => handleInputChange('emailOrUsername', e.target.value)}
+                id="email"
+                type="email"
+                placeholder="Masukan email Anda"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
                 required
                 className="border-teal-200 focus:border-teal-500 focus:ring-teal-500/20"
               />
@@ -148,8 +145,6 @@ const Login = () => {
         </CardContent>
       </Card>
       
-      <SupabaseToggle />
-
       <footer className="mt-8 text-center text-sm text-teal-600/70">
         © Laundry Kita 2025
       </footer>

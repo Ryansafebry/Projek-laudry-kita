@@ -9,7 +9,6 @@ import Layout from "./components/Layout";
 import Orders from "./pages/Orders";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import EmailVerification from "./pages/EmailVerification";
 import AddOrder from "./pages/AddOrder";
 import OrderDetail from "./pages/OrderDetail";
 import Reports from "./pages/Reports";
@@ -36,7 +35,6 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Login />} />
                   <Route path="/register" element={<Register />} />
-                  <Route path="/verify-email" element={<EmailVerification />} />
                   <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                     <Route path="/dashboard" element={<Index />} />
                     <Route path="/orders" element={<Orders />} />
