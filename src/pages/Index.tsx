@@ -1,151 +1,113 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  DollarSign,
-  ShoppingCart,
-  PlusCircle,
-  FileText,
-  ArrowRight,
-  Users,
-  Landmark,
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { useOrders } from "@/context/OrderContext";
-import { getCurrentDateDDMMYYYY, convertYYYYMMDDtoDDMMYYYY } from "@/utils/dateFormat";
+import { calculateOrderTotals } from "@/utils/orderUtils";
+import { Users, Wallet, ShoppingCart, CheckCircle } from "lucide-react";
 
 const Index = () => {
-  const navigate = useNavigate();
-  const { orders } = useOrders();
-  const recentOrders = orders.slice(0, 5);
+  const { orders, services } = useOrders();
 
-  // Statistik Harian
-  const today = getCurrentDateDDMMYYYY();
-  const ordersToday = orders.filter(order => {
-    const orderDateFormatted = convertYYYYMMDDtoDDMMYYYY(order.orderDate);
-    return orderDateFormatted === today;
-  });
-  const incomeToday = ordersToday.reduce((sum, order) => sum + order.amountPaid, 0);
+  const today = new Date().setHours(0, 0, 0, 0);
+  const ordersToday = orders.filter(order => new Date(order.orderDate).setHours(0, 0, 0, 0) === today);
+  
+  const incomeToday = ordersToday.reduce((sum, order) => {
+    const { amountPaid } = calculateOrderTotals(order, services);
+    return sum + amountPaid;
+  }, 0);
 
-  // Statistik Keseluruhan
   const totalOrders = orders.length;
-  const totalIncome = orders.reduce((sum, order) => sum + order.amountPaid, 0);
+  const totalIncome = orders.reduce((sum, order) => {
+    const { amountPaid } = calculateOrderTotals(order, services);
+    return sum + amountPaid;
+  }, 0);
+  
+  const completedOrders = orders.filter(order => order.status === 'Diambil').length;
+
+  const recentOrders = [...orders].sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()).slice(0, 5);
+
+  const statusConfig = {
+    Baru: "bg-blue-500",
+    Proses: "bg-yellow-500",
+    Selesai: "bg-green-500",
+    Diambil: "bg-gray-500",
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => navigate("/add-order")}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Tambah Order
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/reports")}>
-            <FileText className="mr-2 h-4 w-4" /> Laporan Hari Ini
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="p-6 space-y-6">
+      <h1 className="text-3xl font-bold">Dashboard</h1>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Order Hari Ini
-            </CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{ordersToday.length}</div>
-            <p className="text-xs text-muted-foreground">Total pesanan untuk hari ini</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Pemasukan Hari Ini
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">Rp {incomeToday.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Total pembayaran diterima hari ini</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Semua Order
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalOrders}</div>
-            <p className="text-xs text-muted-foreground">Jumlah pesanan sejak awal</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Semua Pemasukan
-            </CardTitle>
-            <Landmark className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Pendapatan</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">Rp {totalIncome.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Jumlah pemasukan sejak awal</p>
+            <p className="text-xs text-muted-foreground">Pendapatan hari ini: Rp {incomeToday.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Pesanan</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalOrders}</div>
+            <p className="text-xs text-muted-foreground">{ordersToday.length} pesanan hari ini</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pesanan Selesai</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{completedOrders}</div>
+            <p className="text-xs text-muted-foreground">Total pesanan yang sudah diambil</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pelanggan Aktif</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{[...new Set(orders.map(o => o.customer.phone))].length}</div>
+            <p className="text-xs text-muted-foreground">Jumlah pelanggan unik</p>
           </CardContent>
         </Card>
       </div>
-
       <Card>
         <CardHeader>
-          <CardTitle>Pesanan Aktif</CardTitle>
+          <CardTitle>Pesanan Terbaru</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Order ID</TableHead>
-                <TableHead>Nama Pelanggan</TableHead>
+                <TableHead>Pelanggan</TableHead>
+                <TableHead>Tanggal</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recentOrders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-medium">{order.id}</TableCell>
-                  <TableCell>{order.customer.name}</TableCell>
-                  <TableCell>
-                    <Badge>{order.status}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    Rp {order.total.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/orders/${order.id}`)}
-                    >
-                      Lihat <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {recentOrders.map((order) => {
+                const { total } = calculateOrderTotals(order, services);
+                return (
+                  <TableRow key={order.id}>
+                    <TableCell>{order.customer.name}</TableCell>
+                    <TableCell>{new Date(order.orderDate).toLocaleDateString("id-ID")}</TableCell>
+                    <TableCell>
+                      <Badge className={statusConfig[order.status]}>{order.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      Rp {total.toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
