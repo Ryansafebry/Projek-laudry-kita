@@ -1,55 +1,81 @@
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { useOrders } from "@/context/OrderContext";
-import { convertYYYYMMDDtoDDMMYYYY } from "@/utils/dateFormat";
+import { convertYYYYMMDDtoDDMMYYYY } from "@/utils/dateUtils";
+import { PlusCircle, Search } from "lucide-react";
 
 const Orders = () => {
-  const navigate = useNavigate();
   const { orders } = useOrders();
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredOrders = orders.filter(
+    (order) =>
+      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">Orders</h1>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">Daftar Order</h1>
+          <p className="text-muted-foreground">Kelola semua order laundry Anda.</p>
+        </div>
+        <Button asChild>
+          <Link to="/add-order">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Tambah Order Baru
+          </Link>
+        </Button>
+      </div>
       <Card>
         <CardHeader>
-          <CardTitle>Order List</CardTitle>
+          <CardTitle>Semua Order</CardTitle>
+          <CardDescription>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Cari berdasarkan ID atau nama pelanggan..."
+                className="pl-8 sm:w-1/3"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Order ID</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>Pelanggan</TableHead>
+                <TableHead>Tanggal</TableHead>
                 <TableHead>Total</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead></TableHead>
+                <TableHead>Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((order) => (
-                <TableRow key={order.id} className="cursor-pointer" onClick={() => navigate(`/orders/${order.id}`)}>
+              {filteredOrders.map((order) => (
+                <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.id}</TableCell>
                   <TableCell>{order.customer.name}</TableCell>
                   <TableCell>{convertYYYYMMDDtoDDMMYYYY(order.orderDate)}</TableCell>
                   <TableCell>Rp {order.total.toLocaleString()}</TableCell>
                   <TableCell>
-                    <Badge>{order.status}</Badge>
+                    <Badge variant={order.status === "Lunas" ? "success" : order.status === "Proses" ? "secondary" : "destructive"}>
+                      {order.status}
+                    </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="outline" size="sm">
-                      Details <ArrowRight className="ml-2 h-4 w-4" />
+                  <TableCell>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/orders/${order.id}`}>Lihat Detail</Link>
                     </Button>
                   </TableCell>
                 </TableRow>
