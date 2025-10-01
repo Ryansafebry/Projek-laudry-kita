@@ -34,41 +34,54 @@ app.get('/api/health', (req, res) => {
 
 // Register endpoint
 app.post('/api/auth/register', (req, res) => {
-  console.log('📥 Register request received:', req.body);
+  console.log('📥 [REGISTER] Request received:', req.body);
   
   const { fullName, username, email, password, phone } = req.body;
   
   // Validasi input
   if (!fullName || !username || !email || !password) {
+    console.log('❌ [REGISTER] Validation failed: Missing fields');
     return res.status(400).json({
       success: false,
       message: 'Semua field wajib diisi'
     });
   }
   
-  // Cek duplikasi
-  const existingUser = users.find(u => u.username === username || u.email === email);
+  const lowerCaseEmail = email.toLowerCase();
+  const lowerCaseUsername = username.toLowerCase();
+  
+  // Cek duplikasi (case-insensitive)
+  const existingUser = users.find(u => u.username.toLowerCase() === lowerCaseUsername || u.email === lowerCaseEmail);
+  
   if (existingUser) {
-    // Jika user ada tapi belum verifikasi, kirim ulang kode
+    console.log(`🤔 [REGISTER] User found for email/username: ${lowerCaseEmail}/${lowerCaseUsername}`);
+    // Jika user ada tapi belum verifikasi, anggap ini sebagai pendaftaran ulang / kirim ulang kode
     if (!existingUser.isEmailVerified) {
-      console.log(`🤔 User ${email} exists but is not verified. Resending verification code.`);
+      console.log(`✅ [REGISTER] User is not verified. Resending verification code.`);
       const verificationCode = generateVerificationCode();
-      verificationCodes.set(email, {
+      verificationCodes.set(lowerCaseEmail, {
         code: verificationCode,
         expiresAt: new Date(Date.now() + 15 * 60 * 1000),
         isUsed: false
       });
       
+      // Update user data in case they changed something like fullName
+      existingUser.fullName = fullName;
+      existingUser.password = password;
+      existingUser.phone = phone || '';
+      
       return res.json({
         success: true,
-        message: 'Registrasi berhasil, silakan verifikasi email Anda.',
-        email: email,
+        message: 'Akun Anda sudah ada tetapi belum diverifikasi. Kode verifikasi baru telah dikirim.',
+        email: lowerCaseEmail,
+        needsVerification: true,
         data: {
           code: verificationCode // Hanya untuk development
         }
       });
     } else {
       // Jika user ada dan sudah terverifikasi, ini adalah duplikat
+      console.log(`❌ [REGISTER] User is already verified. Duplicate account.`);
       return res.status(400).json({
         success: false,
         message: 'Username atau email sudah digunakan'
@@ -77,11 +90,12 @@ app.post('/api/auth/register', (req, res) => {
   }
   
   // Buat user baru
+  console.log(`✅ [REGISTER] Creating new user for ${lowerCaseEmail}`);
   const newUser = {
     id: Date.now().toString(),
     fullName,
-    username,
-    email,
+    username, // Simpan username dengan casing asli untuk display
+    email: lowerCaseEmail, // Simpan email dalam lowercase
     password, // Dalam production, hash password ini
     phone: phone || '',
     isEmailVerified: false,
@@ -92,22 +106,19 @@ app.post('/api/auth/register', (req, res) => {
   
   // Generate verification code
   const verificationCode = generateVerificationCode();
-  const codeData = {
+  verificationCodes.set(lowerCaseEmail, {
     code: verificationCode,
     expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 menit
     isUsed: false
-  };
+  });
   
-  verificationCodes.set(email, codeData);
+  console.log(`📧 [REGISTER] Verification code for ${lowerCaseEmail}: ${verificationCode}`);
   
-  console.log(`📧 Verification code untuk ${email}: ${verificationCode}`);
-  console.log(`📧 Code data stored:`, codeData);
-  console.log(`📧 Total codes in memory:`, verificationCodes.size);
-  
-  res.json({
+  res.status(201).json({
     success: true,
-    message: 'Registrasi berhasil',
-    email: email,
+    message: 'Registrasi berhasil, silakan verifikasi email Anda.',
+    email: lowerCaseEmail,
+    needsVerification: true,
     data: {
       code: verificationCode // Hanya untuk development
     }
@@ -116,16 +127,18 @@ app.post('/api/auth/register', (req, res) => {
 
 // Login endpoint
 app.post('/api/auth/login', (req, res) => {
-  console.log('📥 Login request received:', req.body);
+  console.log('📥 [LOGIN] Request received:', req.body);
   
   const { identifier, password } = req.body;
+  const lowerCaseIdentifier = identifier.toLowerCase();
   
-  // Cari user berdasarkan username atau email
+  // Cari user berdasarkan username atau email (case-insensitive)
   const user = users.find(u => 
-    (u.username === identifier || u.email === identifier) && u.password === password
+    (u.username.toLowerCase() === lowerCaseIdentifier || u.email === lowerCaseIdentifier) && u.password === password
   );
   
   if (!user) {
+    console.log(`❌ [LOGIN] Invalid credentials for: ${lowerCaseIdentifier}`);
     return res.status(401).json({
       success: false,
       message: 'Username/email atau password salah'
@@ -133,9 +146,11 @@ app.post('/api/auth/login', (req, res) => {
   }
   
   if (!user.isEmailVerified) {
+    console.log(`🤔 [LOGIN] User not verified: ${user.email}`);
     return res.status(401).json({
       success: false,
       message: 'Email belum diverifikasi',
+      email: user.email,
       needsVerification: true
     });
   }
@@ -143,6 +158,7 @@ app.post('/api/auth/login', (req, res) => {
   // Remove password dari response
   const { password: _, ...userResponse } = user;
   
+  console.log(`✅ [LOGIN] Login successful for: ${user.email}`);
   res.json({
     success: true,
     message: 'Login berhasil',
@@ -152,53 +168,26 @@ app.post('/api/auth/login', (req, res) => {
 
 // Verify email endpoint
 app.post('/api/auth/verify-email', (req, res) => {
-  console.log('📥 Verify email request received:', req.body);
+  console.log('📥 [VERIFY] Request received:', req.body);
   
   const { email, code } = req.body;
+  const lowerCaseEmail = email.toLowerCase();
   
-  console.log(`🔍 Looking for verification code for email: ${email}`);
-  console.log(`🔍 Input code: "${code}" (type: ${typeof code})`);
-  
-  const storedCode = verificationCodes.get(email);
+  const storedCode = verificationCodes.get(lowerCaseEmail);
   
   if (!storedCode) {
-    console.log(`❌ No stored code found for email: ${email}`);
-    console.log(`📋 Available codes:`, Array.from(verificationCodes.keys()));
+    console.log(`❌ [VERIFY] No code found for: ${lowerCaseEmail}`);
     return res.status(400).json({
       success: false,
-      message: 'Kode verifikasi tidak ditemukan'
+      message: 'Kode verifikasi tidak valid atau sudah kedaluwarsa'
     });
   }
   
-  console.log(`🔍 Stored code: "${storedCode.code}" (type: ${typeof storedCode.code})`);
-  console.log(`🔍 Code comparison: "${code}" === "${storedCode.code}" = ${code === storedCode.code}`);
-  console.log(`🔍 Is used: ${storedCode.isUsed}`);
-  console.log(`🔍 Expires at: ${storedCode.expiresAt}`);
-  console.log(`🔍 Current time: ${new Date()}`);
-  
-  if (storedCode.isUsed) {
-    console.log(`❌ Code already used for email: ${email}`);
+  if (storedCode.isUsed || new Date() > storedCode.expiresAt || storedCode.code !== code) {
+    console.log(`❌ [VERIFY] Code invalid/expired/used for: ${lowerCaseEmail}`);
     return res.status(400).json({
       success: false,
-      message: 'Kode verifikasi sudah digunakan'
-    });
-  }
-  
-  if (new Date() > storedCode.expiresAt) {
-    console.log(`❌ Code expired for email: ${email}`);
-    verificationCodes.delete(email);
-    return res.status(400).json({
-      success: false,
-      message: 'Kode verifikasi sudah expired'
-    });
-  }
-  
-  if (storedCode.code !== code) {
-    console.log(`❌ Code mismatch for email: ${email}`);
-    console.log(`Expected: "${storedCode.code}", Got: "${code}"`);
-    return res.status(400).json({
-      success: false,
-      message: 'Kode verifikasi tidak valid'
+      message: 'Kode verifikasi tidak valid atau sudah kedaluwarsa'
     });
   }
   
@@ -206,9 +195,12 @@ app.post('/api/auth/verify-email', (req, res) => {
   storedCode.isUsed = true;
   
   // Update user verification status
-  const userIndex = users.findIndex(u => u.email === email);
+  const userIndex = users.findIndex(u => u.email === lowerCaseEmail);
   if (userIndex > -1) {
     users[userIndex].isEmailVerified = true;
+    console.log(`✅ [VERIFY] Email verified for: ${lowerCaseEmail}`);
+  } else {
+    console.log(`⚠️ [VERIFY] User not found to update status for: ${lowerCaseEmail}`);
   }
   
   res.json({
@@ -217,25 +209,32 @@ app.post('/api/auth/verify-email', (req, res) => {
   });
 });
 
-// Send verification email endpoint
+// Send verification email endpoint (resend)
 app.post('/api/send-verification-email', (req, res) => {
-  console.log('📥 Send verification email request received:', req.body);
+  console.log('📥 [RESEND] Request received:', req.body);
   
   const { email } = req.body;
+  const lowerCaseEmail = email.toLowerCase();
+
+  const user = users.find(u => u.email === lowerCaseEmail);
+  if (!user || user.isEmailVerified) {
+    console.log(`❌ [RESEND] Cannot resend for verified or non-existent user: ${lowerCaseEmail}`);
+    return res.status(400).json({ success: false, message: 'Tidak dapat mengirim ulang kode.' });
+  }
   
   // Generate new verification code
   const verificationCode = generateVerificationCode();
-  verificationCodes.set(email, {
+  verificationCodes.set(lowerCaseEmail, {
     code: verificationCode,
     expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 menit
     isUsed: false
   });
   
-  console.log(`📧 New verification code untuk ${email}: ${verificationCode}`);
+  console.log(`📧 [RESEND] New verification code for ${lowerCaseEmail}: ${verificationCode}`);
   
   res.json({
     success: true,
-    message: 'Email verifikasi berhasil dikirim',
+    message: 'Email verifikasi berhasil dikirim ulang',
     data: {
       code: verificationCode // Hanya untuk development
     }
@@ -254,7 +253,7 @@ app.get('/api/debug/codes', (req, res) => {
   const codes = Array.from(verificationCodes.entries()).map(([email, data]) => ({
     email,
     code: data.code,
-    expiresAt: data.expiresAt,
+    expiresAt: data.expiresAt.toISOString(),
     isUsed: data.isUsed
   }));
   
@@ -268,7 +267,7 @@ app.get('/api/debug/codes', (req, res) => {
 app.delete('/api/debug/clear-users', (req, res) => {
   users = [];
   verificationCodes.clear();
-  console.log('🧹 Backend: Semua users dan codes telah dihapus');
+  console.log('🧹 [DEBUG] All users and codes have been cleared');
   
   res.json({
     success: true,
@@ -293,10 +292,14 @@ app.listen(PORT, () => {
 // Cleanup expired codes every 5 minutes
 setInterval(() => {
   const now = new Date();
+  let cleanedCount = 0;
   for (const [email, data] of verificationCodes.entries()) {
     if (now > data.expiresAt) {
       verificationCodes.delete(email);
-      console.log(`🧹 Cleaned up expired code for ${email}`);
+      cleanedCount++;
     }
+  }
+  if (cleanedCount > 0) {
+    console.log(`🧹 [CLEANUP] Cleaned up ${cleanedCount} expired code(s)`);
   }
 }, 5 * 60 * 1000);
