@@ -31,7 +31,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const checkUser = async () => {
       const currentUser = await supabaseService.getCurrentUser();
       if (currentUser) {
-        const profile = await supabaseService.getProfile(currentUser.id);
+        let profile = await supabaseService.getProfile(currentUser.id);
+        if (!profile) {
+          profile = await supabaseService.createProfileFromUser(currentUser);
+        }
+        
         if (profile) {
           setUser({
             id: profile.user_id,
@@ -51,7 +55,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Supabase auth state changed:', event);
       if (event === 'SIGNED_IN' && session?.user) {
-        const profile = await supabaseService.getProfile(session.user.id);
+        let profile = await supabaseService.getProfile(session.user.id);
+        if (!profile) {
+          console.log("Profile not found after sign-in, creating one...");
+          profile = await supabaseService.createProfileFromUser(session.user);
+        }
+
         if (profile) {
           setUser({
             id: profile.user_id,
@@ -63,6 +72,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             profilePic: profile.avatar_url || undefined,
           });
           setIsAuthenticated(true);
+        } else {
+          console.error("Failed to get or create a profile for the user.");
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
