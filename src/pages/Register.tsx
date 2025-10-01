@@ -150,8 +150,8 @@ const Register = () => {
             <Button type="submit" disabled={isLoading} className="w-full bg-gradient-blue hover:bg-gradient-blue-dark">
               {isLoading ? "Mendaftarkan..." : "Daftar Akun"}
             </Button>
-            <div className="text-center text-sm">
-              Sudah punya akun? <Link to="/" className="text-teal-600 hover:underline">Login</Link>
+            <div className="text-center text-sm text-slate-600">
+              Sudah punya akun? <Link to="/" className="text-teal-600 hover:underline font-medium">Login</Link>
             </div>
           </form>
         </CardContent>
